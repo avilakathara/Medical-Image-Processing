@@ -22,8 +22,11 @@ for folder_path in folders:
 def load_image(viewer, filename):
     patient_dest_dir = Path("D:/RP/UsedData/{}".format(filename))
     img = np.load(patient_dest_dir.joinpath("img.npy"))
+    print(img.shape)
+    print(img)
     structures = np.load(patient_dest_dir.joinpath("structures.npy")).astype(int)
-
+    print(structures.shape)
+    print(structures)
     img_layer = viewer.add_image(img, name="CT scan", colormap="gray", interpolation2d="bicubic")
     seg_layer = viewer.add_labels(structures, name="segmentation")
     return (img_layer, seg_layer)
@@ -77,34 +80,4 @@ def user_input(viewer):
 
 # start the napari event loop
 napari.run()
-
-
-
-# # init user interface
-# # TODO
-#
-# # load 3D image from selection
-# # TODO
-#
-# isAccepted = False
-#
-# # while not isAccepted:
-# #
-# #     # segment (caution: first time and post-user-input may differ)
-# #     #segment()
-# #
-# #     # calculate uncertainty fields
-# #     #calculate_uncertainty_fields()
-# #
-# #     # decide if the segmentation is good enough
-# #     # TODO
-# #
-# #     if isAccepted:
-# #         break
-# #
-# #     # get the most uncertain slice for user input
-# #     #get_optimal_slice()
-# #
-# #     # present to user and receive changes
-# #     # TODO
 
