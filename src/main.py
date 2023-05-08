@@ -3,24 +3,24 @@ import napari
 from napari.qt import thread_worker
 from qtpy.QtWidgets import QMessageBox
 #from src.segmentation.segmentation import segment
-#from src.slice_select.optimization import get_optimal_slice
-#from src.uncertainty.uncertainty import calculate_uncertainty_fields
+from src.slice_select.optimization import get_optimal_slice
+from src.uncertainty.uncertainty import calculate_uncertainty_fields
 from process_patients import *
 
 
-#folder_path = "D:/RP/RPData/PDDCA-1.4.1_part1" # replace with the path of your folder
-folders = ["D:/RP/RPData/PDDCA-1.4.1_part1", "D:/RP/RPData/PDDCA-1.4.1_part2", "D:/RP/RPData/PDDCA-1.4.1_part3"]
-folder_names = []
-
-# loop over all files in the folder
-for folder_path in folders:
-    for item in os.listdir(folder_path):
-        # check if the item is a directory
-        if os.path.isdir(os.path.join(folder_path, item)):
-            folder_names.append(item)
+# #folder_path = "D:/RP/RPData/PDDCA-1.4.1_part1" # replace with the path of your folder
+# folders = ["D:/RP/RPData/PDDCA-1.4.1_part1", "D:/RP/RPData/PDDCA-1.4.1_part2", "D:/RP/RPData/PDDCA-1.4.1_part3"]
+# folder_names = []
+#
+# # loop over all files in the folder
+# for folder_path in folders:
+#     for item in os.listdir(folder_path):
+#         # check if the item is a directory
+#         if os.path.isdir(os.path.join(folder_path, item)):
+#             folder_names.append(item)
 
 def load_image(viewer, filename):
-    patient_dest_dir = Path("D:/RP/UsedData/{}".format(filename))
+    patient_dest_dir = Path("C:/Users/jonas/Documents/git/Medical-Image-Processing/UsedData/{}".format(filename))
     img = np.load(patient_dest_dir.joinpath("img.npy"))
     print(img.shape)
     print(img)
@@ -42,7 +42,7 @@ def confirm_dialog(title, message):
 # load 3D image (proxies)
 # The subset here is manually input in the code, we could
 set = ['0522c0708', '0522c0195', '0522c0479']
-#convert_to_numpy("D:/RP/RPData" , "D:/RP/UsedData", subset=set)
+#convert_to_numpy("C:/Users/jonas/Documents/git/Medical-Image-Processing/RPData", "C:/Users/jonas/Documents/git/Medical-Image-Processing/UsedData", subset=set)
 
 # create a napari viewer
 viewer = napari.Viewer()
@@ -62,13 +62,15 @@ def user_check(viewer):
     confirmed = confirm_dialog("Process Status", "Is this image sufficiently segmented?")
     # load the new image if the user confirmed
     if confirmed:
-        # TODO: So here the user has accepted the segemtnation, what do we do with this?
+        # TODO: So here the user has accepted the segmentation, what do we do with this?
         #napari.quit()
         print("OVER")
     else:
         print("do slice selection")
+        uncertainty_field = calculate_uncertainty_fields()
         # find optimal slice
-        # load the slice as a special imaage with a name n
+        uncertainty, point, normal = get_optimal_slice(uncertainty_field)
+        # load the slice as a special image with a name n
 
 @viewer.bind_key('c')
 def user_input(viewer):
