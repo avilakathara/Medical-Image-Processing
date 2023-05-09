@@ -7,6 +7,7 @@ from qtpy.QtWidgets import QMessageBox
 #from src.slice_select.optimization import get_optimal_slice
 #from src.uncertainty.uncertainty import calculate_uncertainty_fields
 from process_patients import *
+from pathlib import Path
 
 
 # #folder_path = "D:/RP/RPData/PDDCA-1.4.1_part1" # replace with the path of your folder
@@ -22,7 +23,8 @@ from process_patients import *
 
 
 def load_image(viewer, filename, name):
-    patient_dest_dir = Path("D:/RP/UsedData/{}".format(filename))
+    patient_dest_dir = Path("/Users/Bram/Documents/RP/miccai_data_numpy/part1/0522c0002")
+    # patient_dest_dir = Path("D:/RP/UsedData/{}".format(filename))
     img = np.load(patient_dest_dir.joinpath("img.npy"))
     print(img.shape)
     print(img)
