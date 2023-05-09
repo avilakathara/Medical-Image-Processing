@@ -134,11 +134,29 @@ def user_input(viewer):
 
 @viewer.bind_key('t')
 def test(viewer):
-    layer = viewer.layers['Labels'].data
-    print(layer)
 
-    layer = viewer.layers['Shapes'].data
-    print(layer)
+    # the following is assuming we drew a line!
+    user_input = []
+    lines = viewer.layers['Shapes'].data
+    for line in lines:
+        # add all points that lay on the line
+
+        if line[0][1]-line[1][1] != 0:
+            a = (line[0][2]-line[1][2])/line[0][1]-line[1][1]
+            b = line[0][2]-a*line[0][1]
+            for x in range(int(min(line[0][1],line[1][1])), int(max(line[0][1],line[1][1]))):
+                user_input.append([int(line[0][0]),x,int(a*x + b)])
+        else:
+            for y in range(int(min(line[0][2],line[1][2])), int(min(line[0][2],line[1][2]))):
+                user_input.append([int(line[0][0]),int(line[0][1]),y])
+
+    with open('data.json', 'r') as f:
+        loaded_data = json.load(f)
+
+    loaded_data["user_input"] = user_input
+
+    with open('data.json', 'w') as f:
+        json.dump(loaded_data, f)
 
 # start the napari event loop
 napari.run()
