@@ -132,6 +132,13 @@ def user_input(viewer):
 
     # TODO: The modified slice has been gotten, we do something with this
 
+@viewer.bind_key('t')
+def test(viewer):
+    layer = viewer.layers['Labels'].data
+    print(layer)
+
+    layer = viewer.layers['Shapes'].data
+    print(layer)
 
 # start the napari event loop
 napari.run()
