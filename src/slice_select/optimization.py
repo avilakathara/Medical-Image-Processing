@@ -69,7 +69,7 @@ def get_optimal_slice(uncertainty):
             highest_x = temp_x
             v = temp_v
 
-    return uncertainty[highest_x], highest_x, normal
+    return uncertainty[highest_x], highest_x, normal, "x"
     #return highest_value, highest_x, v
 
 
