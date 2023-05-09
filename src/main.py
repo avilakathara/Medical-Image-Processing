@@ -7,6 +7,7 @@ from qtpy.QtWidgets import QMessageBox
 #from src.slice_select.optimization import get_optimal_slice
 #from src.uncertainty.uncertainty import calculate_uncertainty_fields
 from process_patients import *
+from pathlib import Path
 
 
 # #folder_path = "D:/RP/RPData/PDDCA-1.4.1_part1" # replace with the path of your folder
@@ -22,7 +23,9 @@ from process_patients import *
 
 
 def load_image(viewer, filename, name):
-    patient_dest_dir = Path("D:/RP/UsedData/{}".format(filename))
+    patient_dest_dir = Path("/Users/Bram/Documents/RP/miccai_data_numpy/part1/0522c0002")
+
+    # patient_dest_dir = Path("D:/RP/UsedData/{}".format(filename))
     img = np.load(patient_dest_dir.joinpath("img.npy"))
     print(img.shape)
     print(img)
@@ -132,31 +135,33 @@ def user_input(viewer):
 
     # TODO: The modified slice has been gotten, we do something with this
 
-@viewer.bind_key('t')
+@viewer.bind_key('.')
 def test(viewer):
 
     # the following is assuming we drew a line!
-    user_input = []
-    lines = viewer.layers['Shapes'].data
+
+    with open('data.txt', 'w') as f:
+        lines = viewer.layers['Shapes'].data
+        f.write(str(get_line_points(lines)))
+        lines = viewer.layers['Shapes [1]'].data
+        f.write('\n')
+        f.write(str(get_line_points(lines)))
+
+def get_line_points(lines):
+    all_points = []
     for line in lines:
         # add all points that lay on the line
+        print(line)
 
         if line[0][1]-line[1][1] != 0:
-            a = (line[0][2]-line[1][2])/line[0][1]-line[1][1]
+            a = (line[0][2]-line[1][2])/(line[0][1]-line[1][1])
             b = line[0][2]-a*line[0][1]
             for x in range(int(min(line[0][1],line[1][1])), int(max(line[0][1],line[1][1]))):
-                user_input.append([int(line[0][0]),x,int(a*x + b)])
+                all_points.append([int(line[0][0]),x,int(a*x + b)])
         else:
             for y in range(int(min(line[0][2],line[1][2])), int(min(line[0][2],line[1][2]))):
-                user_input.append([int(line[0][0]),int(line[0][1]),y])
-
-    with open('data.json', 'r') as f:
-        loaded_data = json.load(f)
-
-    loaded_data["user_input"] = user_input
-
-    with open('data.json', 'w') as f:
-        json.dump(loaded_data, f)
+                all_points.append([int(line[0][0]),int(line[0][1]),y])
+    return all_points
 
 # start the napari event loop
 napari.run()
