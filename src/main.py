@@ -10,7 +10,6 @@ from process_patients import *
 from pathlib import Path
 
 
-# #folder_path = "D:/RP/RPData/PDDCA-1.4.1_part1" # replace with the path of your folder
 # folders = ["D:/RP/RPData/PDDCA-1.4.1_part1", "D:/RP/RPData/PDDCA-1.4.1_part2", "D:/RP/RPData/PDDCA-1.4.1_part3"]
 # folder_names = []
 #
@@ -106,11 +105,12 @@ def user_check(viewer):
             json.dump(loaded_data, f)
 
 
+
 @viewer.bind_key('c')
 def user_input(viewer):
     # use this name n instead of 'CT scan here'
-    layer = viewer.layers['Points'].data
-    #print(layer)
+    layer = viewer.layers['Shapes'].data
+    print(layer)
     user_input = []
     for val in layer:
         user_input.append(val[1:].tolist())
