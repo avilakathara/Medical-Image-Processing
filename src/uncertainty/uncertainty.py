@@ -16,6 +16,8 @@ def calculate_uncertainty_fields(image, label, prob):
 
     # get image size; ps is the number of label types
     ps, px, py, pz = prob.shape
+    if ps > 1:
+        prob = prob[1:]  # get rid of background probability
 
     # assure other 3D-arrays have same size
     lx, ly, lz = label.shape
@@ -32,38 +34,49 @@ def calculate_uncertainty_fields(image, label, prob):
                         + "[" + ix + " ," + iy + ", " + iz + "].")
 
     # initialize output uncertainty field
-    output_field = np.zeros((px, py, pz, ps))
+    output_field = np.zeros((ps - 1, px, py, pz))
 
     # parameters for foreground & background distributions
     # [(mean_0, std_0), (mean_1, std_1), ...]
+    print("Calculating distributions...")
     distributions = gaussian_foreground_background(image, label, ps)
 
     # distance maps (or transform)
     # [(distance_from_0, distance_from_1), (df0, df2), ...]
-    distance_maps = get_distance_maps(label, ps)
+    print("Calculating distance maps...")
+    # distance_maps = get_distance_maps(label, ps)
 
     # image gradient
-    dx, dy, dz = np.gradient(image)
+    print("Calculating gradient...")
+    # dx, dy, dz = np.gradient(image)
 
     # calculate uncertainty for each voxel
     for x in range(px):
+        print("Working... x = " + str(x))
         for y in range(py):
             for z in range(pz):
-                for p in range(1, ps):
-                    u_e = entropy_energy(prob[p, x, y, z])
-                    u_b = boundary_energy((x, y, z), label[x, y, z],
-                                          distance_maps[p], (dx, dy, dz))
-                    u_r = regional_energy(image[x, y, z], label[x, y, z],
-                                          distributions[0], distributions[p])
-                    output_field[x, y, z, p] = 0.8 * u_e + 0.05 * u_b + 0.15 * u_r
+                for p in range(0, ps - 1):
+                    u_e = entropy_energy(float(prob[p, x, y, z]))
+                    # u_b = boundary_energy((x, y, z), label[x, y, z], distance_maps[p], (dx, dy, dz))
+
+                    # FAST (without regional energy)
+                    output_field[p, x, y, z] = u_e  # + 0.15 * u_r + 0.05 * u_b
+
+                    # SLOW (with regional energy)
+                    # u_r = regional_energy(image[x, y, z], label[x, y, z], distributions[0], distributions[p])
+                    # output_field[p, x, y, z] = 0.8 * u_e + 0.2 * u_r  # + 0.05 * u_b
 
     return output_field
 
 ###
 
 def entropy_energy(prob):
-    t1 = prob * math.log(prob, 2)
-    t2 = (1 - prob) * math.log(1 - prob, 2)
+    t1 = 0.0
+    if prob > 0.0:
+        t1 = float(prob * math.log(prob, 2))
+    t2 = 0.0
+    if prob < 1.0:
+        t2 = float((1.0 - prob) * math.log(1.0 - prob, 2))
     return -t1 - t2
 
 ###
@@ -100,16 +113,16 @@ def get_distance_maps(label, n):
     for x in range(lx):
         for y in range(ly):
             for z in range(lz):
-                for i in range(1, n):
+                for i in range(0, n-1):
                     if label[x, y, z] == i:
                         labels[i][x, y, z] = 1
                     else:
                         labels[i][x, y, z] = 0
 
     output_map = []
-    for i in range(1, n):
+    for i in range(0, n-1):
         output_map.append(0)
-    for i in range(1, n):
+    for i in range(0, n-1):
         output_map.append((
             sn.distance_transform_edt(labels[i]),
             sn.distance_transform_edt(np.invert(labels[i]))
@@ -137,11 +150,7 @@ def gaussian_foreground_background(image, label, n):
     for x in range(ix):
         for y in range(iy):
             for z in range(iz):
-                for i in range(n):
-                    if label[x, y, z] == i:
-                        intensity_list[i].append(image[x, y, z])
-                    else:
-                        continue
+                intensity_list[label[x, y, z]].append(image[x, y, z])
 
     output_list = []
     for i in range(n):
@@ -149,6 +158,9 @@ def gaussian_foreground_background(image, label, n):
     return output_list
 
 def gaussian_density(x, mean, std):
+    if x == 0:
+        return 0
+
     expo = -math.pow((x - mean) / std, 2) / 2
     coef = 1 / (std * math.sqrt(2 * math.pi))
     return coef * math.pow(math.e, expo)
