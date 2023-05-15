@@ -75,71 +75,61 @@ def get_uncertainty_field(viewer):
     viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray", interpolation2d="bicubic")
 
 # count = 1
-#
-# @viewer.bind_key('y')
-# def user_check(viewer):
-#     confirmed = confirm_dialog("Process Status", "Is this image sufficiently segmented?")
-#     # load the new image if the user confirmed
-#     if confirmed:
-#         # TODO: So here the user has accepted the segmentation, what do we do with this?
-#         #napari.quit()
-#         print("OVER")
-#     else:
-#         print("do slice selection")
-#         # find optimal slice
-#         #uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
-#         # load the slice as a special image with a name n
-#         # TODO: this normal needs to be used to rotate the segmentation and the CT scan before taking the array at the point based on chosen axis
-#
-#         # Get the image
-#         img = viewer.layers['CT_scan_1'].data
-#         # rotate here is needed
-#
-#         # this is currently taking place
-#         val = 100
-#
-#         chosen_slice = img[100]
-#
-#         img_layer = viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
-#
-#         with open('data.json', 'r') as f:
-#             loaded_data = json.load(f)
-#         # Save info into json
-#         #loaded_data["chosen_point"] = point
-#         #loaded_data["chosen_normal"] = normal
-#         #loaded_data["chosen_axis"] = chosen_axis
-#         with open('data.json', 'w') as f:
-#             json.dump(loaded_data, f)
-#
-#
-#
-# @viewer.bind_key('c')
-# def user_input(viewer):
-#     # use this name n instead of 'CT scan here'
-#     layer = viewer.layers['Shapes'].data
-#     print(layer)
-#     user_input = []
-#     for val in layer:
-#         user_input.append(val[1:].tolist())
-#
-#     with open('data.json', 'r') as f:
-#         loaded_data = json.load(f)
-#
-#     loaded_data["user_input"] = user_input
-#
-#     with open('data.json', 'w') as f:
-#         json.dump(loaded_data, f)
-#
-#     # Remove the points and chosen layer for next iteration
-#     # The two for loops are inefficient, but this needs to be done this way otherwise it bugs
-#     for layer in viewer.layers:
-#         if (layer.name == 'chosen_slice'):
-#             viewer.layers.remove(layer)
-#     for layer in viewer.layers:
-#         if (layer.name == "Points"):
-#             viewer.layers.remove(layer)
-#
-#     # TODO: The modified slice has been gotten, we do something with this
+
+@viewer.bind_key('y')
+def user_check(viewer):
+    # Find optimal slice
+    uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
+
+    # load the slice as a special image with a name n
+    # Get the image
+    img = viewer.layers['CT_SCAN'].data
+    # rotate here is needed
+    # TODO: this normal needs to be used to rotate the segmentation and the CT scan before taking the array at the point based on chosen axis
+    chosen_slice = img[point]
+
+    img_layer = viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
+
+    # Save the chosen values here into a JSON for future use if needed
+    with open('data.json', 'r') as f:
+        loaded_data = json.load(f)
+    # Save info into json
+    loaded_data["chosen_point"] = point
+    loaded_data["chosen_normal"] = normal
+    loaded_data["chosen_axis"] = chosen_axis
+    with open('data.json', 'w') as f:
+        json.dump(loaded_data, f)
+
+
+
+@viewer.bind_key('c')
+def user_input(viewer):
+    # Get the annotations the user makes
+    layer = viewer.layers['Points'].data
+    user_input = []
+    for val in layer:
+        user_input.append(val[1:].tolist())
+
+    # Save these annotations
+
+    with open('data.json', 'r') as f:
+        loaded_data = json.load(f)
+
+    loaded_data["user_input"] = user_input
+
+    with open('data.json', 'w') as f:
+        json.dump(loaded_data, f)
+
+    # Remove the points and chosen layer for next iteration
+    # The two for loops are inefficient, but this needs to be done this way otherwise it bugs
+    for layer in viewer.layers:
+        if (layer.name == 'chosen_slice'):
+            viewer.layers.remove(layer)
+    for layer in viewer.layers:
+        if (layer.name == "Points"):
+            viewer.layers.remove(layer)
+
+    # TODO: The modified slice has been gotten, we do something with this
 #
 # @viewer.bind_key('.')
 # def test(viewer):
