@@ -1,31 +1,18 @@
 import os
 import napari
 import json
-# from napari.qt import thread_worker
+import nrrd
+
+import tkinter as tk
+from tkinter import filedialog
 from qtpy.QtWidgets import QMessageBox
-#from src.segmentation.segmentation import segment
+
+# from src.segmentation.segmentation import segment
 from src.slice_select.optimization import get_optimal_slice
 from src.uncertainty.uncertainty import calculate_uncertainty_fields
+
 from process_patients import *
 from pathlib import Path
-
-
-# folders = ["D:/RP/RPData/PDDCA-1.4.1_part1", "D:/RP/RPData/PDDCA-1.4.1_part2", "D:/RP/RPData/PDDCA-1.4.1_part3"]
-# folder_names = []
-#
-# # loop over all files in the folder
-# for folder_path in folders:
-#     for item in os.listdir(folder_path):
-#         # check if the item is a directory
-#         if os.path.isdir(os.path.join(folder_path, item)):
-#             folder_names.append(item)
-
-
-def load_image(viewer, file, name):
-    img = np.load(file)
-    img_layer = viewer.add_image(img, name="CT_scan_{}".format(name), colormap="gray", interpolation2d="bicubic")
-    # seg_layer = viewer.add_labels(structures, name="segmentation_{}".format(name))
-    return img_layer
 
 def confirm_dialog(title, message):
     msg_box = QMessageBox()
@@ -35,41 +22,57 @@ def confirm_dialog(title, message):
     msg_box.setDefaultButton(QMessageBox.No)
     return msg_box.exec_() == QMessageBox.Yes
 
-# load 3D image (proxies)
-# The subset here is manually input in the code, we could
-set = ['0522c0708', '0522c0195', '0522c0479']
-#convert_to_numpy("C:/Users/jonas/Documents/git/Medical-Image-Processing/RPData", "C:/Users/jonas/Documents/git/Medical-Image-Processing/UsedData", subset=set)
 
-data = {'chosen_point': 0, 'chosen_normal': [0,0,0], 'chosen_axis' : 'x' , 'user_input': []}
-with open('data.json', 'w') as f:
-    json.dump(data, f)
+# PROMPT TO SELECT FILE
+window = tk.Tk()
+window.withdraw()
+file_path = filedialog.askopenfilename()
+window.destroy()
 
-# create a napari viewer
+# INITIATE NAPARI
 viewer = napari.Viewer()
 
 # LOAD IMAGE
-img = np.load("0522c0002_mandible_img.npy")
-img_layer = viewer.add_image(img, name="CT_scan_{}".format("1"), colormap="gray", interpolation2d="bicubic")
+try:
+    # TODO: convert ndarray into numpy array
+    img, _ = nrrd.read(file_path)
+except:
+    img = np.load(file_path)
+viewer.add_image(img, name="CT_SCAN", colormap="gray", interpolation2d="bicubic")
 
-# LOAD SEGMENTATION
-# seg = np.load("0522c0002_mandible_segmentation.npy")
-# seg_layer = viewer.add_labels(seg, name="segmentation_{}".format("s"))
+data = {'chosen_point': 0, 'chosen_normal': [0, 0, 0], 'chosen_axis': 'x', 'user_input': []}
+with open('data.json', 'w') as f:
+    json.dump(data, f)
 
-# LOAD PROBABILITIES
-# prob = np.load("0522c0002_mandible_probabilities.npy")
-# prob_layer = viewer.add_image(prob, name="prob_{}".format("p"), colormap="gray", interpolation2d="bicubic")
+segmentation = None
+probabilities = None
+uncertainty_field = None
 
-# PRESS 'S' TO GET UNCERTAINTY FIELD
+# PRESS 'S' TO SEGMENT
 @viewer.bind_key('s')
 def segment(viewer):
-    # uncertainty_field = calculate_uncertainty_fields(img, seg, prob)
-    uncertainty_field = np.load("uncertainty.npy")
-    viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray", interpolation2d="bicubic")
+    global segmentation
+    global probabilities
+    try:
+        segmentation = np.load("segmentation.npy")
+        probabilities = np.load("probabilities.npy")
+        viewer.add_labels(segmentation, name="segmentation")
+        # viewer.add_image(probabilities, name="prob", colormap="gray", interpolation2d="bicubic")
+    except:
+        # TODO: import from segmentation.py
+        # segmentation, probabilities = segment()
+        pass
 
-    # fetching worst plane
-    wp, hx, n, x = get_optimal_slice(uncertainty_field)
-    viewer.add_image(wp, name="worst_plane_uncertainty", colormap="gray", interpolation2d="bicubic")
-    viewer.add_image(img[hx], name="worst_plane", colormap="gray", interpolation2d="bicubic")
+# PRESS 'U' TO GET UNCERTAINTY FIELD
+@viewer.bind_key('u')
+def get_uncertainty_field(viewer):
+    global uncertainty_field
+    try:
+        uncertainty_field = np.load("uncertainty.npy")
+    except:
+        uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
+
+    viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray", interpolation2d="bicubic")
 
 # count = 1
 #
@@ -83,7 +86,6 @@ def segment(viewer):
 #         print("OVER")
 #     else:
 #         print("do slice selection")
-#         # uncertainty_field = calculate_uncertainty_fields(img_layer, seg_layer, prob_layer)
 #         # find optimal slice
 #         #uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
 #         # load the slice as a special image with a name n
