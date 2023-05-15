@@ -62,6 +62,7 @@ def func(plane):
     return np.sum(arr)
 
 def get_xygrad(plane):
+    #cv2 here
     scale = 1
     delta = 0
     ddepth = cv2.CV_64F
