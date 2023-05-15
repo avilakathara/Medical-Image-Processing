@@ -4,14 +4,14 @@ import numpy as np
 import numpy.linalg as nl
 import scipy.ndimage as sn
 
-def calculate_uncertainty_fields(image, label, prob):
+def calculate_uncertainty_fields(image, label, prob, combine_fields=True):
     """
     Method for calculating uncertainty fields
 
     @param image:   3D image of intensity values
     @param label:   3D image of segmentation (0 for background, 1 for organ 1, etc.)
-    @param prob:    3D + 1D arrays containing classification probabilities of each voxels, for each labels
-    @return:        3D + 1D arrays containing uncertainty values of each voxels, for each labels
+    @param prob:    1D + 3D arrays containing classification probabilities of each voxels, for each labels
+    @return:        1D + 3D arrays containing uncertainty values of each voxels, for each labels
     """
 
     # get image size; ps is the number of label types
@@ -35,6 +35,8 @@ def calculate_uncertainty_fields(image, label, prob):
 
     # initialize output uncertainty field
     output_field = np.zeros((ps - 1, px, py, pz))
+    if combine_fields:
+        output_field = np.zeros((px, py, pz))
 
     # parameters for foreground & background distributions
     # [(mean_0, std_0), (mean_1, std_1), ...]
@@ -60,11 +62,17 @@ def calculate_uncertainty_fields(image, label, prob):
                     # u_b = boundary_energy((x, y, z), label[x, y, z], distance_maps[p], (dx, dy, dz))
 
                     # FAST (without regional energy)
-                    output_field[p, x, y, z] = u_e  # + 0.15 * u_r + 0.05 * u_b
+                    if combine_fields:
+                        output_field[x, y, z] += u_e
+                    else:
+                        output_field[p, x, y, z] = u_e  # + 0.15 * u_r + 0.05 * u_b
 
                     # SLOW (with regional energy)
                     # u_r = regional_energy(image[x, y, z], label[x, y, z], distributions[0], distributions[p])
                     # output_field[p, x, y, z] = 0.8 * u_e + 0.2 * u_r  # + 0.05 * u_b
+
+    if combine_fields:
+        return (output_field-np.min(output_field))/(np.max(output_field)-np.min(output_field))
 
     return output_field
 

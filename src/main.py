@@ -57,7 +57,7 @@ seg_layer = viewer.add_labels(seg, name="segmentation_{}".format("s"))
 
 # LOAD PROBABILITIES
 prob = np.load("0522c0002_mandible_probabilities.npy")
-#prob_layer = viewer.add_image(prob, name="prob_{}".format("p"), colormap="gray", interpolation2d="bicubic")
+# prob_layer = viewer.add_image(prob, name="prob_{}".format("p"), colormap="gray", interpolation2d="bicubic")
 
 # PRESS 'S' TO GET UNCERTAINTY FIELD
 @viewer.bind_key('s')
