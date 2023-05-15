@@ -20,7 +20,7 @@ def get_optimal_slice(uncertainty):
     for i in range(0, iterations):
         # Generate random point that, together with a normal, defines a plane
         chosen_x = int(np.random.uniform(0, x))
-        print("at iteration {} we choose x as {}".format(i, chosen_x))
+        print("at iteration {} (out of {}) we choose x as {}".format(i, iterations, chosen_x))
         # run gradient descent, starting at ax
         current_x, current_uncertainty, _ = gradient_descent(uncertainty, chosen_x, step_size)
         # compare gradient result with current best result

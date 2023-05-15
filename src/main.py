@@ -76,7 +76,7 @@ def get_uncertainty_field(viewer):
 
 # count = 1
 
-@viewer.bind_key('y')
+@viewer.bind_key('p')
 def user_check(viewer):
     # Find optimal slice
     uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
@@ -99,8 +99,6 @@ def user_check(viewer):
     loaded_data["chosen_axis"] = chosen_axis
     with open('data.json', 'w') as f:
         json.dump(loaded_data, f)
-
-
 
 @viewer.bind_key('c')
 def user_input(viewer):
