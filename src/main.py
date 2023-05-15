@@ -4,7 +4,7 @@ import json
 # from napari.qt import thread_worker
 from qtpy.QtWidgets import QMessageBox
 #from src.segmentation.segmentation import segment
-#from src.slice_select.optimization import get_optimal_slice
+from src.slice_select.optimization import get_optimal_slice
 from src.uncertainty.uncertainty import calculate_uncertainty_fields
 from process_patients import *
 from pathlib import Path
@@ -52,18 +52,24 @@ img = np.load("0522c0002_mandible_img.npy")
 img_layer = viewer.add_image(img, name="CT_scan_{}".format("1"), colormap="gray", interpolation2d="bicubic")
 
 # LOAD SEGMENTATION
-seg = np.load("0522c0002_mandible_segmentation.npy")
-seg_layer = viewer.add_labels(seg, name="segmentation_{}".format("s"))
+# seg = np.load("0522c0002_mandible_segmentation.npy")
+# seg_layer = viewer.add_labels(seg, name="segmentation_{}".format("s"))
 
 # LOAD PROBABILITIES
-prob = np.load("0522c0002_mandible_probabilities.npy")
+# prob = np.load("0522c0002_mandible_probabilities.npy")
 # prob_layer = viewer.add_image(prob, name="prob_{}".format("p"), colormap="gray", interpolation2d="bicubic")
 
 # PRESS 'S' TO GET UNCERTAINTY FIELD
 @viewer.bind_key('s')
 def segment(viewer):
-    uncertainty_field = calculate_uncertainty_fields(img, seg, prob)
+    # uncertainty_field = calculate_uncertainty_fields(img, seg, prob)
+    uncertainty_field = np.load("uncertainty.npy")
     viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray", interpolation2d="bicubic")
+
+    # fetching worst plane
+    wp, hx, n, x = get_optimal_slice(uncertainty_field)
+    viewer.add_image(wp, name="worst_plane_uncertainty", colormap="gray", interpolation2d="bicubic")
+    viewer.add_image(img[hx], name="worst_plane", colormap="gray", interpolation2d="bicubic")
 
 # count = 1
 #

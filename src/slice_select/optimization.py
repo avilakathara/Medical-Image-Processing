@@ -16,7 +16,8 @@ def get_optimal_slice(uncertainty):
     highest_x = -1
     step_size = 0.03
     normal = []
-    for i in range(0, 1):
+    for i in range(0, 40):
+        print(i)
         # Generate random point that, together with a normal, defines a plane
         x = int(np.random.uniform(0, x))
 
@@ -34,8 +35,8 @@ def gradient_descent(uncertainty, x, step_size):
     m, _, _ = uncertainty.shape
     #print(x)
     current_pos = x
-    for i in range(40):
-        print("current position: " + str(current_pos))
+    for i in range(250):
+        # print("current position: " + str(current_pos))
 
         # prevent the current value from going outside of the allowed values
         if current_pos <= 1:
@@ -50,7 +51,7 @@ def gradient_descent(uncertainty, x, step_size):
 
         # gradient ascent
         # TODO: Maybe make the step size reduction dynamic using i
-        print("current gradient: " + str(gradient_difference))
+        # print("current gradient: " + str(gradient_difference))
         current_pos += int(gradient_difference * step_size)
 
     return current_pos, get_grad(uncertainty[current_pos, :, :]), x
