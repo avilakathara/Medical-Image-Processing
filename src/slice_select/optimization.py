@@ -16,13 +16,13 @@ def get_optimal_slice(uncertainty):
     highest_x = -1
     step_size = 0.03
     normal = []
-    for i in range(0, 40):
-        print(i)
+    iterations = 40
+    for i in range(0, iterations):
         # Generate random point that, together with a normal, defines a plane
-        x = int(np.random.uniform(0, x))
-
+        chosen_x = int(np.random.uniform(0, x))
+        print("at iteration {} we choose x as {}".format(i, chosen_x))
         # run gradient descent, starting at ax
-        current_x, current_uncertainty, _ = gradient_descent(uncertainty, x, step_size)
+        current_x, current_uncertainty, _ = gradient_descent(uncertainty, chosen_x, step_size)
         # compare gradient result with current best result
         if highest_uncertainty < current_uncertainty:
             highest_uncertainty = current_uncertainty
@@ -97,8 +97,8 @@ if __name__ == "__main__":
     # noise = np.random.rand(20,20,20)/10
     # test_arr = test_arr + noise
     # np.save('my_array.npy', test_arr)
-    test_arr = np.load('my_array.npy')
-    print("Mean values of planes: " + str(np.mean(test_arr, (1, 2))))
+    # test_arr = np.load('my_array.npy')
+    # print("Mean values of planes: " + str(np.mean(test_arr, (1, 2))))
     # x = int(np.random.uniform(1, 19))
     #
     # # Random normal
@@ -109,15 +109,16 @@ if __name__ == "__main__":
     #plane = arr[:, :, x] + np.outer(normal, np.arange(arr.shape[0])) + np.outer(np.arange(arr.shape[1]), normal)
 
     arr = []
-
-    for x in range(1, 20):
-        arr.append(get_grad(test_arr[x]))
+    ra = np.load('uncertainty.npy')
+    for x in range(1, len(ra)):
+        arr.append(get_grad(ra[x]))
 
     print(arr)
     plt.plot(arr)
     plt.show()
     #
-    h_v, h_x, v, _ = get_optimal_slice(test_arr)
+
+    h_v, h_x, v, _ = get_optimal_slice(ra)
     #print(h_v)
     print(h_x)
     print(v)
