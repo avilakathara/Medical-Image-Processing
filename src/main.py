@@ -52,24 +52,26 @@ uncertainty_field = None
 def get_segmentation(viewer):
     global segmentation
     global probabilities
-    segmentation, probabilities = segment(img) # test
-    viewer.add_image(segmentation, name="segmentation", colormap="gray", interpolation2d="bicubic")
-    # try:
-    #     segmentation = np.load("segmentation.npy")
-    #     probabilities = np.load("probabilities.npy")
-    #     viewer.add_labels(segmentation, name="segmentation")
-    #     # viewer.add_image(probabilities, name="prob", colormap="gray", interpolation2d="bicubic")
-    # except:
-    #     segmentation, probabilities = segment(img)
+    # segmentation, probabilities = segment(img) # test
+    # viewer.add_image(segmentation, name="segmentation", colormap="gray", interpolation2d="bicubic")
+    try:
+        # files already exist, loading...
+        segmentation = np.load("segmentation.npy")
+        probabilities = np.load("probabilities.npy")
+        viewer.add_labels(segmentation, name="segmentation")
+        # viewer.add_image(probabilities, name="prob", colormap="gray", interpolation2d="bicubic")
+    except:
+        # creating new segmentation...
+        segmentation, probabilities = segment(img)
 
 # PRESS 'U' TO GET UNCERTAINTY FIELD
 @viewer.bind_key('u')
 def get_uncertainty_field(viewer):
     global uncertainty_field
-    try:
-        uncertainty_field = np.load("uncertainty.npy")
-    except:
-        uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
+    # try:
+    #     uncertainty_field = np.load("uncertainty.npy")
+    # except:
+    uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
 
     viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray", interpolation2d="bicubic")
 

@@ -29,7 +29,7 @@ now = datetime.now()
 # pip install chardet
 
 
-import pyamg
+# import pyamg
 patient_dest_dir = Path("/Users/Bram/Documents/RP/miccai_data_numpy/part1/0522c0002")
 
 # img = np.load(patient_dest_dir.joinpath("img.npy"))
