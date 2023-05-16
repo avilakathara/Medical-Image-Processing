@@ -62,20 +62,27 @@ def func(plane):
     return np.sum(arr)
 
 def get_xygrad(plane):
+    #cv2 here
     scale = 1
     delta = 0
-    ddepth = cv2.CV_16S
-    #grad_x = cv2.Sobel(plane, ddepth, 1, 0, ksize=3, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
-    #grad_y = cv2.Sobel(plane, ddepth, 0, 1, ksize=3, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
-    #mult_x = abs(grad_x * plane)
+    ddepth = cv2.CV_64F
+    scaled_plane = np.round(plane * 255).astype(np.uint8)
+    grad_x = cv2.Sobel(scaled_plane, ddepth, 1, 0, ksize=3)
+    grad_y = cv2.Sobel(scaled_plane, ddepth, 0, 1, ksize=3)
+    grad_x = (grad_x / 255.0).astype(np.float32)
+    grad_y = (grad_y / 255.0).astype(np.float32)
+    mult_x = abs(grad_x * plane)
+    mult_y = abs(grad_y * plane)
 
-    sx = ndimage.sobel(plane, axis=0, mode='constant')
-    mx = abs(sx * plane)
-    #print(mx)
-    sy = ndimage.sobel(plane, axis=0, mode='constant')
-    my = abs(sy * plane)
-    #print(mx)
-    return mx, my
+    return mult_x, mult_y
+
+    # sx = ndimage.sobel(plane, axis=0, mode='constant')
+    # mx = abs(sx * plane)
+    # #print(mx)
+    # sy = ndimage.sobel(plane, axis=0, mode='constant')
+    # my = abs(sy * plane)
+    # #print(mx)
+    # return mx, my
 
 def get_grad(plane):
     x,y = get_xygrad(plane)
@@ -97,7 +104,7 @@ if __name__ == "__main__":
     # noise = np.random.rand(20,20,20)/10
     # test_arr = test_arr + noise
     # np.save('my_array.npy', test_arr)
-    # test_arr = np.load('my_array.npy')
+    test_arr = np.load('my_array.npy')
     # print("Mean values of planes: " + str(np.mean(test_arr, (1, 2))))
     # x = int(np.random.uniform(1, 19))
     #
