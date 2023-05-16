@@ -16,7 +16,8 @@ import _pyift
 import collections
 from typing import Union, Sequence, Optional
 import warnings
-
+from skimage.morphology import binary_dilation
+from skimage.morphology import binary_erosion
 # pip install dijkstra
 from dijkstra import Graph, DijkstraSPF
 
@@ -24,6 +25,8 @@ from dijkstra import Graph, DijkstraSPF
 import cv2 as cv
 
 from matplotlib import pyplot as plt
+
+
 
 
 
@@ -160,11 +163,14 @@ class LiveWire:
         self.start = -1
         self.paths = collections.OrderedDict()
         self.current = None
-        self.laplacian = abs(cv.Laplacian(image,cv.CV_32F).astype(int))
+
+        self.laplacian_zc, self.laplacian = get_laplacians(image)
         self.max_gradient = np.max(self.laplacian)
         self.distance_to_start = np.zeros(image.shape)
         self.chosen_slice = 0
         self.straight = False
+        self.dijkstra = None
+        self.dijkstra_nodes = []
 
     def _opt_path(self, src: int, dst: int) -> Optional[np.ndarray]:
 
@@ -222,9 +228,7 @@ class LiveWire:
             raise TypeError('`position` must be a integer, tuple or list.')
 
         if self.source != -1:
-            # hier gaat het mis!!!!!!!!!!!!!!!!!
             self.cancel()
-            # self.current = self.my_optimal_path(self.float_source,float_pos)
             self.current = self._opt_path(self.float_source, float_pos)
         else:
             for i in range(len(image)):
@@ -256,7 +260,7 @@ class LiveWire:
         self.source = self.destiny
         self.float_source = self.float_destiny
         self.current = None
-
+        self.dijkstra, self.dijkstra_nodes = create_dijkstra(self.image,self.source,self.size[1],self.laplacian,self.max_gradient,self.laplacian_zc)
     def close(self) -> None:
         """
         Connects the current path to the initial coordinate, closing the live-wire contour. Result must be confirmed.
@@ -399,40 +403,44 @@ class LiveWire:
                 self.labels.flat[point] = True
             return np.array(path)
 
-        # miss nog eerst morphology of blur/ander filter?
-        offset_x, offset_y = 6,6
-        dist = np.sqrt(((src[0]-dst[0])**2) + (src[1]-dst[1])**2)
-        center = [(src[0]+dst[0])/2,(src[1]+dst[1])/2]
+        if flatten_indices(d,self.size[1]) in self.dijkstra_nodes:
+            path = self.dijkstra.get_path(flatten_indices(d,self.size[1]))
 
-        if src[1] == dst[1]:
-            angle = 90
-        elif src[0] == dst[0]:
-            angle = 0
-        else:
-            angle = np.degrees(np.arctan(abs(src[0]-dst[0])/abs(src[1]-dst[1])))
-        if (src[0] < dst[0] and src[1] > dst[1]) or (src[0] > dst[0] and src[1] < dst[1]):
-            angle = 360-angle
-
-        x,y = center[1]-0.5*dist-offset_x,center[0]-offset_y
-        width = 2*offset_x+dist
-        height = 2*offset_y
-        rect = Rectangle((x,y), width,height, angle=angle, rotation_point='center')
-        corners = rect.get_corners()
-
-        points = []
-        for p in corners:
-            points.append([p[0],p[1]])
-
-        inside_rect = []
-        mask = np.zeros((image.shape[0],image.shape[1],3))
-        cv.fillPoly(mask,pts=[np.array(points,dtype=np.int32)],color=(0, 255, 0))
-        for i in range(len(mask)):
-            for j in range(len(mask[0])):
-                if sum(mask[i][j]) > 0:
-                    inside_rect.append(flatten_indices([i,j],self.size[1]))
-
-
-        path = self.create_graph(flatten_indices(src,self.size[1]),flatten_indices(dst,self.size[1]),size,self.image,inside_rect)
+        # # miss nog eerst morphology of blur/ander filter?
+        # offset_x, offset_y = 6,6
+        # dist = np.sqrt(((src[0]-dst[0])**2) + (src[1]-dst[1])**2)
+        # center = [(src[0]+dst[0])/2,(src[1]+dst[1])/2]
+        #
+        # if src[1] == dst[1]:
+        #     angle = 90
+        # elif src[0] == dst[0]:
+        #     angle = 0
+        # else:
+        #     angle = np.degrees(np.arctan(abs(src[0]-dst[0])/abs(src[1]-dst[1])))
+        # if (src[0] < dst[0] and src[1] > dst[1]) or (src[0] > dst[0] and src[1] < dst[1]):
+        #     angle = 360-angle
+        #
+        # x,y = center[1]-0.5*dist-offset_x,center[0]-offset_y
+        # width = 2*offset_x+dist
+        # height = 2*offset_y
+        # rect = Rectangle((x,y), width,height, angle=angle, rotation_point='center')
+        # corners = rect.get_corners()
+        #
+        # points = []
+        # for p in corners:
+        #     points.append([p[0],p[1]])
+        #
+        # inside_rect = []
+        # mask = np.zeros((image.shape[0],image.shape[1],3))
+        # cv.fillPoly(mask,pts=[np.array(points,dtype=np.int32)],color=(0, 255, 0))
+        # for i in range(len(mask)):
+        #     for j in range(len(mask[0])):
+        #         if sum(mask[i][j]) > 0:
+        #             inside_rect.append(flatten_indices([i,j],self.size[1]))
+        #
+        #
+        # path = self.create_graph(flatten_indices(src,self.size[1]),flatten_indices(dst,self.size[1]),size,self.image,inside_rect)
+        #
         for point in path:
             self.labels.flat[point] = True
         return np.array(path)
@@ -450,8 +458,84 @@ def flatten_indices(indices,size_x):
     return round(y * size_x + x)
 
 
+def get_laplacians(image):
+    # sobel_x = np.array([[ -1, 0, 1],
+    #                     [ -2, 0, 2],
+    #                     [ -1, 0, 1]])
+    #
+    #
+    # sobel_y = np.array([[ -1, -2, -1],
+    #                     [ 0, 0, 0],
+    #                     [ 1, 2, 1]])
+    # #blur??
+    # filtered_blurred_x = cv.filter2D(image, -1, sobel_x)
+    # filtered_blurred_y = cv.filter2D(image, -1, sobel_y)
+    laplacian = cv.Laplacian(image,cv.CV_32F)
+    # minLoG = binary_erosion(laplacian,footprint=np.ones((3, 3))).astype(np.uint8)
+    # maxLoG = binary_dilation(laplacian,footprint=np.ones((3, 3))).astype(np.uint8)
+    # minLoG = cv.morphologyEx(laplacian, cv.MORPH_ERODE, np.ones((3,3)))
+    # maxLoG = cv.morphologyEx(laplacian, cv.MORPH_DILATE, np.ones((3,3)))
+    # zeroCross = np.logical_or(np.logical_and(minLoG < 0,  laplacian > 0), np.logical_and(maxLoG > 0, laplacian < 0))
+    return None,abs(laplacian)
+
+def create_dijkstra(image,source,size_x,laplacian,max_gradient,laplacian_zc):
+
+    def cost(p,q):
+        l = 1-laplacian.flat[q]/max_gradient
+        # z = laplacian_zc.flat[q]
+        # D_p = (gradient_y.flat[p],-gradient_x.flat[p])
+        # D_q = (gradient_y.flat[q],-gradient_x.flat[q])
+        # norm = np.linalg.norm(D_p)
+        # if norm != 0.0:
+        #     D_p /= norm
+        # norm = np.linalg.norm(D_q)
+        # if norm != 0.0:
+        #     D_q /= norm
+        # L_pq = (q-p if D_p[0]*(q-p) >= 0 else p-q, q-p if D_p[1]*(q-p) >= 0 else p-q)
+        # norm = np.linalg.norm(L_pq)
+        # if norm != 0.0:
+        #     L_pq /= norm
+        # d_p_pq = D_p[0]*L_pq[0]+D_p[1]*L_pq[1]
+        # d_q_pq = D_q[0]*L_pq[0]+D_q[1]*L_pq[1]
+        # # print(d_p_pq,d_q_pq)
+        # d = (np.arccos(d_p_pq) + np.arccos(d_q_pq))*2/(3*np.pi)
+        return l
+
+    indices = flat_to_indices(source,size_x)
+    x_source, y_source = indices[1],indices[0]
+    graph = Graph()
+    size = 50
+    box = []
+    nodes = []
+    for i in range(max(0,y_source-size),min(image.shape[0]-1,y_source+size)):
+        for j in range(max(0,x_source-size),min(image.shape[1]-1,x_source+size)):
+            box.append([i,j])
 
 
+    for point in box:
+        point_flat = flatten_indices(point,size_x)
+        if point[1] < image.shape[1]-1:
+            to = flatten_indices([point[0],point[1]+1],size_x)
+            nodes.append(to)
+            graph.add_edge(point_flat,to,cost(source,to))
+        if point[1] > 0:
+            to = flatten_indices([point[0],point[1]-1],size_x)
+            nodes.append(to)
+
+        graph.add_edge(point_flat,to,cost(source,to))
+        if point[0] < image.shape[0]-1:
+            to = flatten_indices([point[0]+1,point[1]],size_x)
+            nodes.append(to)
+
+        graph.add_edge(point_flat,to,cost(source,to))
+        if point[0] > 0:
+            to = flatten_indices([point[0]-1,point[1]],size_x)
+            nodes.append(to)
+
+        graph.add_edge(point_flat,to,cost(source,to))
+
+    dijkstra = DijkstraSPF(graph, source)
+    return dijkstra, nodes
 
 
 # SETTINGS.reset()
@@ -470,7 +554,7 @@ with open('../data.txt', 'w') as f:
 viewer = napari.view_image(images, rgb=False)
 livewire = LiveWire(image, sigma=default_sigma)
 livewire.chosen_slice = 65
-livewire.straight = True
+livewire.straight = False
 layer = viewer.add_labels(livewire.contour,
                           name='contour', opacity=1.0)
 
@@ -497,13 +581,13 @@ def mouse_move(layer, event):
         image = images[round(event.position[0])]
         livewire = LiveWire(image, sigma=default_sigma)
         livewire.chosen_slice = event.position[0]
-        livewire.straight = True
+        livewire.straight = False
         layer.data = livewire.contour
 
     if valid(coords):
         best_gradient = abs(livewire.laplacian[int(coords[0]),int(coords[1])])
         best_coords = coords
-        snap_width = 0
+        snap_width = 1
         for i in range(int(max(0,coords[0]-snap_width)), int(1+min(image.shape[0]-1,coords[0]+snap_width))):
             for j in range(int(max(0,coords[1]-snap_width)), int(1+min(image.shape[1]-1,coords[1]+snap_width))):
                 if abs(livewire.laplacian[i,j]) > best_gradient:

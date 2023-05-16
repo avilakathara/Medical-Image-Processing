@@ -2,14 +2,13 @@ import os
 import napari
 import json
 import nrrd
-
 import tkinter as tk
 from tkinter import filedialog
 from qtpy.QtWidgets import QMessageBox
 
-# from src.segmentation.segmentation import segment
-from src.slice_select.optimization import get_optimal_slice
-from src.uncertainty.uncertainty import calculate_uncertainty_fields
+from segmentation.segmentation import segment
+from slice_select.optimization import get_optimal_slice
+from uncertainty.uncertainty import calculate_uncertainty_fields
 
 from process_patients import *
 from pathlib import Path
@@ -50,18 +49,18 @@ uncertainty_field = None
 
 # PRESS 'S' TO SEGMENT
 @viewer.bind_key('s')
-def segment(viewer):
+def get_segmentation(viewer):
     global segmentation
     global probabilities
-    try:
-        segmentation = np.load("segmentation.npy")
-        probabilities = np.load("probabilities.npy")
-        viewer.add_labels(segmentation, name="segmentation")
-        # viewer.add_image(probabilities, name="prob", colormap="gray", interpolation2d="bicubic")
-    except:
-        # TODO: import from segmentation.py
-        # segmentation, probabilities = segment()
-        pass
+    segmentation, probabilities = segment(img) # test
+    viewer.add_image(segmentation, name="segmentation", colormap="gray", interpolation2d="bicubic")
+    # try:
+    #     segmentation = np.load("segmentation.npy")
+    #     probabilities = np.load("probabilities.npy")
+    #     viewer.add_labels(segmentation, name="segmentation")
+    #     # viewer.add_image(probabilities, name="prob", colormap="gray", interpolation2d="bicubic")
+    # except:
+    #     segmentation, probabilities = segment(img)
 
 # PRESS 'U' TO GET UNCERTAINTY FIELD
 @viewer.bind_key('u')
