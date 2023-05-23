@@ -12,30 +12,61 @@ def optimization():
     return
 
 
+def random_plane_normal():
+    # Generate three random values between -1 and 1
+    random_values = np.random.uniform(-1, 1, 3)
+
+    # Normalize the vector to obtain a unit normal
+    normal = random_values / np.linalg.norm(random_values)
+
+    return normal
+
+
+# multiple gradient descent
 def get_optimal_slice(uncertainty):
-    x, _, _ = uncertainty.shape
+    x, y, z = uncertainty.shape
+
+    gradients = get_gradients(uncertainty)
+
     highest_uncertainty = -1
-    highest_x = -1
-    step_size = 1
-    normal = []
-    iterations = 40
+    highest_point = [-10000, -10000, -10000]
+    step_size = 0.1
+
+    normal = [1, 0, 0]
+
+    iterations = 1
+
     for i in range(0, iterations):
         # Generate random point that, together with a normal, defines a plane
-        chosen_x = int(np.random.uniform(0, x))
-        print("at iteration {} (out of {}) we choose x as {}".format(i, iterations, chosen_x))
-        # run gradient descent, starting at ax
-        current_x, current_uncertainty, _ = gradient_descent(uncertainty, chosen_x, step_size)
+        chosen_point = [int(np.random.uniform(0, x)), int(np.random.uniform(0, y)), int(np.random.uniform(0, z))]
+        # Generate a normal
+        # chosen_normal = random_plane_normal()
+        chosen_normal = normal
+        print("at iteration {} (out of {}) we choose x as {} and normal as {}".format(i, iterations, chosen_point,
+                                                                                      chosen_normal))
+
+        # run gradient descent, starting at a point and normal
+        current_point, current_normal = gradient_descent(uncertainty, chosen_point, chosen_normal, step_size, gradients)
+
+        # get uncertainty at resulting point
+        plane_indexes = get_indexes_in_plane(uncertainty, current_point, normal, 0.00001)
+        uncertainty_plane = uncertainty[plane_indexes[:, 0], plane_indexes[:, 1], plane_indexes[:, 2]]
+        current_uncertainty = np.sum(uncertainty_plane)
+
         # compare gradient result with current best result
         if highest_uncertainty < current_uncertainty:
             highest_uncertainty = current_uncertainty
-            highest_x = current_x
+            highest_point = current_point
 
-    return uncertainty[highest_x], highest_x, normal, "x"
+    return uncertainty[highest_point], highest_point, normal, "x"
+
 
 # Start pos is of type [x,y,z]
-def gradient_descent(uncertainty, start_pos, step_size):
+def gradient_descent(uncertainty, start_pos, start_normal, step_size, gradients):
     m_x, m_y, m_z = uncertainty.shape
     current_pos = start_pos
+    current_normal = start_normal
+
     for i in range(40):
         # print("current position: " + str(current_pos))
 
@@ -54,10 +85,8 @@ def gradient_descent(uncertainty, start_pos, step_size):
         if current_pos[2] >= m_z - 1:
             current_pos[2] = m_z - 2
 
-        # gradient_difference is the gradient above the current plane, gradient_difference_p is the gradient below the
-        # current plane.
-        # [current_pos + 1] because in get optimal slice we start from index 1, meaning everything is shifted by 1.
-        gradient = get_point_gradient(uncertainty, current_pos, [1,0,0])
+        # Update the point position based on equation 8
+        gradient, indexes = get_point_gradient(uncertainty, current_pos, current_normal, gradients)
 
         print("current gradient: " + str(gradient))
         print("current point: " + str(current_pos))
@@ -67,28 +96,49 @@ def gradient_descent(uncertainty, start_pos, step_size):
         mult = gradient * step_size
         current_pos += mult.astype(int)
 
-    return current_pos, current_pos
+        # Update the normal based on equation 7
+        update_value = get_normal_update(current_normal, gradients, indexes)
+        print(update_value)
 
-# , x, normal, step_size
-def get_point_gradient(uncertainty, point, normal):
-    gradients = get_gradients(uncertainty)
+    return current_pos, current_normal
 
+
+def get_normal_update(normal, gradients, indexes):
+    # Do u times Jacobian of a
+    matrix_a = np.array([[-normal[0], -normal[1], -normal[2]], [0, 0, 0]])
+    #res_a = matrix_a * indexes
+    res_a = np.dot(matrix_a, indexes.T)
+
+    # Do v times Jacobian of b
+    matrix_b = np.array([[0, 0, 0], [-normal[0], -normal[1], -normal[2]]])
+    #res_b = matrix_b * indexes
+    res_b = np.dot(matrix_b, indexes.T)
+
+    # Sum the two values above
+    matrix_sum = res_a + res_b
+
+    # get [x,y,z] gradient values from current plane
+    gradient_planes = gradients[:, indexes[:, 0], indexes[:, 1], indexes[:, 2]]
+
+    update_x = np.dot(matrix_sum, gradient_planes[0])
+    update_y = np.dot(matrix_sum, gradient_planes[1])
+    update_z = np.dot(matrix_sum, gradient_planes[2])
+
+    normal_update = [update_x, update_y, update_z]
+    return normal_update
+
+
+# returns the gradient vector of the plane defined by the given point and normal
+def get_point_gradient(uncertainty, point, current_normal, gradients):
     # Get the plane in relation to the x and normal
-    # TODO: randomly instantiate the point and normal
-    indexes = get_indexes_in_plane(uncertainty, point, normal, 0.00001)
+    indexes = get_indexes_in_plane(uncertainty, point, current_normal, 0.00001)
 
-    uncertainty_plane = uncertainty[indexes[:, 0], indexes[:, 1], indexes[:, 2]]
-    gradient_plane = gradients[:,indexes[:, 0], indexes[:, 1], indexes[:, 2]]
+    gradient_plane = gradients[:, indexes[:, 0], indexes[:, 1], indexes[:, 2]]
 
-    mult = gradient_plane * uncertainty_plane
-    gradient_vector = np.sum(mult, axis=1)
+    # sum up the planes to get three sums
+    gradient_vector = np.sum(gradient_plane, axis=1)
 
-
-
-    return gradient_vector
-
-def get_plane_indices(uncertainty, point, normal):
-    x, y, z = uncertainty.shape
+    return gradient_vector, indexes
 
 
 def get_indexes_in_plane(array, position, normal, tolerance):
@@ -104,12 +154,13 @@ def get_indexes_in_plane(array, position, normal, tolerance):
     for i in range(min_i, max_i + 1):
         for j in range(min_j, max_j + 1):
             for k in range(min_k, max_k + 1):
-                result = A*i + B*j + C*k + D
+                result = A * i + B * j + C * k + D
 
                 if abs(result) <= tolerance:
                     indexes_in_plane.append([i, j, k])
 
     return np.array(indexes_in_plane)
+
 
 def get_gradients(arr):
     gradients = np.gradient(arr, axis=None)
@@ -152,6 +203,7 @@ def rotate(normal):
     rotated_arr = np.transpose(np.roll(arr, -int(np.degrees(angle)), axis=(1, 2)), axes=(0, 2, 1))
     return rotated_arr
 
+
 def get_orthonormal_vectors(v):
     v1 = v / np.linalg.norm(v)
     v2 = np.random.rand(3)  # Random vector
@@ -159,6 +211,7 @@ def get_orthonormal_vectors(v):
     v2 /= np.linalg.norm(v2)
     v3 = np.cross(v1, v2)
     return v1, v2, v3
+
 
 if __name__ == "__main__":
     # arr = np.arange(20)
@@ -169,7 +222,7 @@ if __name__ == "__main__":
     # noise = np.random.rand(20,20,20)/10
     # test_arr = test_arr + noise
     # np.save('my_array.npy', test_arr)
-    test_arr = np.load('my_array.npy')
+    test_arr = np.load('test_data/my_array.npy')
     # print("Mean values of planes: " + str(np.mean(test_arr, (1, 2))))
     # x = int(np.random.uniform(1, 19))
     #
@@ -183,9 +236,8 @@ if __name__ == "__main__":
     arr = []
     # ra = np.load('uncertainty.npy')
 
-    result = gradient_descent(test_arr, [4, 10, 10], 0.1)
-    print(result)
-
+    uncertainty_plane, highest_point, normal, _ = get_optimal_slice(test_arr)
+    print(highest_point)
 
     # for x in range(1, len(ra)):
     #     arr.append(get_grad(ra[x]))
