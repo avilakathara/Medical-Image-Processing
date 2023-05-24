@@ -3,8 +3,8 @@ import math
 import numpy as np
 import cv2 as cv2
 import matplotlib.pyplot as plt
-from scipy import ndimage
-from scipy.ndimage import rotate
+# from scipy import ndimage
+# from scipy.ndimage import rotate
 
 # takes the uncertainty field and returns the plane (slice) with the highest uncertainty
 def optimization():

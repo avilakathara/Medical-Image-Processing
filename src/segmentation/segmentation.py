@@ -1,19 +1,18 @@
 from pathlib import Path
 from skimage.segmentation import random_walker
 from skimage.segmentation import flood
-from skimage.segmentation import expand_labels
-from skimage.morphology import ball
+# from skimage.segmentation import expand_labels
+# from skimage.morphology import ball
 from skimage.morphology import binary_dilation
-from skimage.morphology import binary_erosion
-from skimage.morphology import binary_opening
+# from skimage.morphology import binary_erosion
+# from skimage.morphology import binary_opening
 
-from skimage.morphology import binary_closing
-from skimage.morphology import area_closing
-from skimage.filters import gaussian
+# from skimage.morphology import binary_closing
+# from skimage.morphology import area_closing
+# from skimage.filters import gaussian
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import time
-import os
 import cv2 as cv
 
 from datetime import datetime

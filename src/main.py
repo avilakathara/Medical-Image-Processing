@@ -12,7 +12,6 @@ from segmentation.segmentation import segment
 from slice_select.optimization import get_optimal_slice
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
-from process_patients import *
 from pathlib import Path
 
 def confirm_dialog(title, message):
@@ -90,6 +89,7 @@ livewire = None
 click_count = 0
 seed_points = None
 lw_layer = None
+
 # PRESS 'a' TO CREATE SEEDPOINTS, OR SAVE THEM
 @viewer.bind_key('a')
 def create_seedpoints(viewer):
@@ -182,10 +182,10 @@ def get_segmentation(viewer):
 @viewer.bind_key('u')
 def get_uncertainty_field(viewer):
     global uncertainty_field
-    try:
-        uncertainty_field = np.load("uncertainty.npy")
-    except:
-        uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
+    # try:
+    #     uncertainty_field = np.load("uncertainty.npy")
+    # except:
+    uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
 
     viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray", interpolation2d="bicubic")
 

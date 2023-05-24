@@ -1,30 +1,30 @@
-import sys
+# import sys
 import napari
-import numpy as np
-from PIL import Image
+# import numpy as np
+# from PIL import Image
 # conda install -c conda-forge pyift
 # from pyift.livewire import LiveWire
-from skimage import color
-from magicgui import magicgui
-from qtpy.QtWidgets import QDoubleSpinBox
-from qtpy.QtWidgets import QSlider
+# from skimage import color
+# from magicgui import magicgui
+# from qtpy.QtWidgets import QDoubleSpinBox
+# from qtpy.QtWidgets import QSlider
 from pathlib import Path
-from matplotlib.patches import Rectangle
+# from matplotlib.patches import Rectangle
 from napari.settings import SETTINGS
 import numpy as np
 import _pyift
 import collections
 from typing import Union, Sequence, Optional
 import warnings
-from skimage.morphology import binary_dilation
-from skimage.morphology import binary_erosion
+# from skimage.morphology import binary_dilation
+# from skimage.morphology import binary_erosion
 # pip install dijkstra
 from dijkstra import Graph, DijkstraSPF
 
 # conda install -c conda-forge opencv
 import cv2 as cv
 
-from matplotlib import pyplot as plt
+# from matplotlib import pyplot as plt
 
 
 class LiveWire2:
