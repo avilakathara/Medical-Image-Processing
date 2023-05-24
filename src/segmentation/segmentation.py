@@ -39,9 +39,9 @@ def segment(image,seed_points):
         print("amount of seed points: ",np.count_nonzero(seed_points))
 
     for index,slice in enumerate(seed_points):
-        if index == 0 or index == len(seed_points)-1:
-            seed_points[index] = np.ones(slice.shape)*2
-            continue
+        # if index == 0 or index == len(seed_points)-1:
+        #     seed_points[index] = np.ones(slice.shape)*2
+        #     continue
         if np.count_nonzero(slice) == 0:
             continue
         img = np.ones(slice.shape)
