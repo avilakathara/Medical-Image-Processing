@@ -147,7 +147,7 @@ def flatten_indices(indices,size_x):
 
 
 def automatic_seeds(ground_truth):
-    skips = 3
+    skips = 5
     slice = 0
     ground_truth[ground_truth!=0] = 1
     seed_points = np.zeros(ground_truth.shape,dtype=bool)
@@ -157,20 +157,11 @@ def automatic_seeds(ground_truth):
         else:
             im = ground_truth[slice].astype(np.uint8)
             contours, hierarchy = cv.findContours(im, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
-            contour = max(contours,key= lambda x: len(x))
-            for point in contour:
-                seed_points[slice,point[0][1],point[0][0]] = True
+            for contour in contours:
+                for point in contour:
+                    seed_points[slice,point[0][1],point[0][0]] = True
 
             slice += skips
-            # new_seeds = np.zeros((im.shape))
-            # cv.fillPoly(new_seeds,pts=[np.array(contours[-2],dtype=np.int32)],color=1)
-            # for point in contours[-1]:
-            #     new_seeds[point[0][1],point[0][0]] = 2
-            # new_seeds[flood(binary_dilation(new_seeds,footprint=np.ones((3, 3))).astype(np.uint8),(0,0))] = 2
-            # for point in contours[-1]:
-            #     new_seeds[point[0][1],point[0][0]] = 0
-            #
-            # seed_points[index] = new_seeds
     return seed_points
 
 
