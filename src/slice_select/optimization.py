@@ -11,6 +11,8 @@ def optimization():
     return
 
 def get_optimal_slice(uncertainty):
+    print("Fetching optimal slice...")
+
     x, _, _ = uncertainty.shape
     highest_uncertainty = -1
     highest_x = -1

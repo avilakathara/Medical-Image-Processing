@@ -17,6 +17,8 @@ def calculate_uncertainty_fields(image, label, prob):
     @return:        (1D +) 3D arrays containing uncertainty values of each voxels, for each labels
     """
 
+    print("Calculating uncertainty fields...")
+
     # get image size; ps is the number of label types
     ps, px, py, pz = prob.shape
 
@@ -36,18 +38,15 @@ def calculate_uncertainty_fields(image, label, prob):
 
     # parameters for foreground & background distributions
     # [(mean_0, std_0), (mean_1, std_1), ...]
-    print("Calculating distributions...")
     global binary_labels
     binary_labels = convert_to_binary(label, ps)
     # distributions = gaussian_foreground_background(image, label, ps)
 
     # distance maps (or transform)
     # [(distance_from_0, distance_from_1), (df0, df2), ...]
-    print("Calculating distance maps...")
     # distance_maps = get_distance_maps(label, ps)
 
     # image gradient
-    print("Calculating gradient...")
     # dx, dy, dz = np.gradient(image)
 
     # vectorize functions

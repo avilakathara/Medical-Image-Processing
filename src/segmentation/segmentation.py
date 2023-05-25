@@ -35,7 +35,7 @@ def segment(image,seed_points):
     if seed_points is None or np.count_nonzero(seed_points) == 0:
         print('there are no seedpoints provided!')
     else:
-        print("amount of seed points: ",np.count_nonzero(seed_points))
+        print("Segmenting with {} seed points...".format(np.count_nonzero(seed_points)))
 
     for index,slice in enumerate(seed_points):
         # if index == 0 or index == len(seed_points)-1:
@@ -51,7 +51,7 @@ def segment(image,seed_points):
 
     start_time = time.time()
     prob = random_walker(image, seed_points, beta=0.1, mode='cg_j',tol=0.1, copy=False, return_full_prob=True)
-    print(time.time() - start_time, "seconds")
+    # print(time.time() - start_time, "seconds")
 
     labels = np.zeros(image.shape).astype(int)
     labels[prob[0]>=0.5] = 1
