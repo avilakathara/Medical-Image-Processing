@@ -171,21 +171,13 @@ def get_segmentation(viewer):
     global probabilities
     global seed_points
     global mypath
-    segmentation, probabilities = segment(img,seed_points) # test
-    viewer.add_labels(segmentation, name="segmentation")
-    # try:
-    #     segmentation = np.load("segmentation.npy")
-    #     probabilities = np.load("probabilities.npy")
-    #     viewer.add_labels(segmentation, name="segmentation")
-    #     # viewer.add_image(probabilities, name="prob", colormap="gray", interpolation2d="bicubic")
-    # except:
-    #     segmentation, probabilities = segment(img)
+    global iterations
+
+    segmentation, probabilities = segment(img, seed_points)
+    viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
 
 def get_uncertainty_field(viewer, draw=False):
     global uncertainty_field
-    # try:
-    #     uncertainty_field = np.load("uncertainty.npy")
-    # except:
     uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
 
     if draw:
@@ -193,9 +185,12 @@ def get_uncertainty_field(viewer, draw=False):
 
 def user_check(viewer):
     global fetched_plane_index
+    global iterations
 
     # Find optimal slice
     uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
+
+    print("Iteration {} - MAX UNCERTAINTY at plane z = {}".format(iterations, point))
 
     # load the slice as a special image with a name n
     # Get the image
@@ -205,7 +200,7 @@ def user_check(viewer):
     chosen_slice = img[point]
     fetched_plane_index = point
 
-    viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
+    # viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
 
     # Save the chosen values here into a JSON for future use if needed
     with open('data.json', 'r') as f:
@@ -220,6 +215,10 @@ def user_check(viewer):
 # MAKE ANNOTATIONS
 @viewer.bind_key('a')
 def on_press_a(viewer):
+    try:
+        viewer.layers.remove(lw_layer)
+    except:
+        pass
     create_seedpoints(viewer)
 
 # MAKE SEGMENTATION
