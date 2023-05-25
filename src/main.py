@@ -80,8 +80,6 @@ with open('data.json', 'w') as f:
 # DECIDE WHETHER OR NOT TO USE REAL USER INPUT
 simulate_user_input = True
 
-
-
 segmentation = None
 probabilities = None
 uncertainty_field = None
@@ -89,9 +87,10 @@ livewire = None
 click_count = 0
 seed_points = None
 lw_layer = None
+fetched_plane_index = None
 
-# PRESS 'a' TO CREATE SEEDPOINTS, OR SAVE THEM
-@viewer.bind_key('a')
+iterations = 0
+
 def create_seedpoints(viewer):
     global livewire
     global click_count
@@ -100,6 +99,8 @@ def create_seedpoints(viewer):
     global mypath # test shit
     global simulate_user_input
     global ground_truth
+    global iterations
+    global fetched_plane_index
 
     if livewire is not None:
         seed_points = livewire.drawing
@@ -108,9 +109,14 @@ def create_seedpoints(viewer):
         return
 
     if simulate_user_input:
-        seed_points = automatic_seeds(ground_truth)
-        np.save(mypath+"test_zooi", seed_points)
-        lw_layer = viewer.add_labels(seed_points, name='seed points (automatic)',opacity=1.0)
+        if iterations > 0:
+            seed_points = auto_add_seeds(seed_points, ground_truth, segmentation, fetched_plane_index)
+            np.save(mypath + "test_zooi", seed_points)
+            lw_layer = viewer.add_labels(seed_points, name='additional seed points (automatic)', opacity=1.0)
+        else:
+            seed_points = automatic_seeds(ground_truth)
+            np.save(mypath+"test_zooi", seed_points)
+            lw_layer = viewer.add_labels(seed_points, name='seed points (automatic)',opacity=1.0)
     else:
         livewire = LiveWire2(img, sigma=5.0)
         lw_layer = viewer.add_labels(livewire.drawing,
@@ -160,9 +166,6 @@ def create_seedpoints(viewer):
 
         click_count += 1
 
-
-# PRESS 'S' TO SEGMENT
-@viewer.bind_key('s')
 def get_segmentation(viewer):
     global segmentation
     global probabilities
@@ -178,32 +181,31 @@ def get_segmentation(viewer):
     # except:
     #     segmentation, probabilities = segment(img)
 
-# PRESS 'U' TO GET UNCERTAINTY FIELD
-@viewer.bind_key('u')
-def get_uncertainty_field(viewer):
+def get_uncertainty_field(viewer, draw=False):
     global uncertainty_field
     # try:
     #     uncertainty_field = np.load("uncertainty.npy")
     # except:
     uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
 
-    viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray", interpolation2d="bicubic")
+    if draw:
+        viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray", interpolation2d="bicubic")
 
-# count = 1
-
-@viewer.bind_key('p')
 def user_check(viewer):
+    global fetched_plane_index
+
     # Find optimal slice
     uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
 
     # load the slice as a special image with a name n
     # Get the image
-    img = viewer.layers['CT_SCAN'].data
+    # img = viewer.layers['CT_SCAN'].data
     # rotate here is needed
     # TODO: this normal needs to be used to rotate the segmentation and the CT scan before taking the array at the point based on chosen axis
     chosen_slice = img[point]
+    fetched_plane_index = point
 
-    img_layer = viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
+    viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
 
     # Save the chosen values here into a JSON for future use if needed
     with open('data.json', 'r') as f:
@@ -214,6 +216,20 @@ def user_check(viewer):
     loaded_data["chosen_axis"] = chosen_axis
     with open('data.json', 'w') as f:
         json.dump(loaded_data, f)
+
+# MAKE ANNOTATIONS
+@viewer.bind_key('a')
+def on_press_a(viewer):
+    create_seedpoints(viewer)
+
+# MAKE SEGMENTATION
+@viewer.bind_key('s')
+def on_press_s(viewer):
+    global iterations
+    iterations += 1
+    get_segmentation(viewer)
+    get_uncertainty_field(viewer)
+    user_check(viewer)
 
 @viewer.bind_key('c')
 def user_input(viewer):
@@ -243,6 +259,10 @@ def user_input(viewer):
             viewer.layers.remove(layer)
 
     # TODO: The modified slice has been gotten, we do something with this
+
+# INITIATE
+napari.run()
+
 #
 # @viewer.bind_key('.')
 # def test(viewer):
@@ -272,6 +292,4 @@ def user_input(viewer):
 #                 all_points.append([int(line[0][0]),int(line[0][1]),y])
 #     return all_points
 
-# start the napari event loop
-napari.run()
 

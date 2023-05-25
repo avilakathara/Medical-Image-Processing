@@ -164,8 +164,23 @@ def automatic_seeds(ground_truth):
             slice += skips
     return seed_points
 
+def auto_add_seeds(original, ground_truth, segmentation, slice):
+    ground_truth[ground_truth!=0] = 1
+    segmentation[segmentation!=0] = 1
+    diff = ground_truth - segmentation
+    diff[diff==-1] = 0
 
+    seed_points = original
 
+    if np.count_nonzero(diff[slice]) == 0:
+        return seed_points
+
+    im = diff[slice].astype(np.uint8)
+    contours, hierarchy = cv.findContours(im, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
+    for contour in contours:
+        for point in contour:
+            seed_points[slice, point[0][1], point[0][0]] = True
+    return seed_points
 
 
 
