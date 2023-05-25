@@ -67,12 +67,6 @@ ground_truth = ground_truth[zmin:zmax,ymin:ymax,xmin:xmax]
 viewer.add_image(img, name="CT_SCAN", colormap="gray", interpolation2d="bicubic")
 # viewer.add_labels(ground_truth, name="GROUND TRUTH")
 
-# this is for testing only, can be deleted
-mypath = "../../results/"
-if not os.path.isdir(mypath):
-    os.makedirs(mypath)
-# till here
-
 data = {'chosen_point': 0, 'chosen_normal': [0, 0, 0], 'chosen_axis': 'x', 'user_input': []}
 with open('data.json', 'w') as f:
     json.dump(data, f)
@@ -105,17 +99,17 @@ def create_seedpoints(viewer):
     if livewire is not None:
         seed_points = livewire.drawing
         livewire = None
-        # np.save(mypath+"test_zooi", seed_points)
+        # np.save("seeds", seed_points)
         return
 
     if simulate_user_input:
         if iterations > 0:
             seed_points = auto_add_seeds(seed_points, ground_truth, segmentation, fetched_plane_index)
-            np.save(mypath + "test_zooi", seed_points)
+            # np.save("seeds", seed_points)
             lw_layer = viewer.add_labels(seed_points, name='additional seed points (automatic)', opacity=1.0)
         else:
             seed_points = automatic_seeds(ground_truth)
-            np.save(mypath+"test_zooi", seed_points)
+            # np.save("seeds", seed_points)
             lw_layer = viewer.add_labels(seed_points, name='seed points (automatic)',opacity=1.0)
     else:
         livewire = LiveWire2(img, sigma=5.0)

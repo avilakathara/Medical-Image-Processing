@@ -18,11 +18,6 @@ import cv2 as cv
 from datetime import datetime
 now = datetime.now()
 
-mypath = "../../../results/test_zooi.npy"
-
-# if not os.path.isdir(mypath):
-#     os.makedirs(mypath)
-
 # FOR THE REST OF THE GROUP:
 # conda install -c anaconda pyamg
 # pip install chardet
