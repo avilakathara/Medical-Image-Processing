@@ -18,258 +18,93 @@ import cv2 as cv
 from datetime import datetime
 now = datetime.now()
 
-# mypath = "../../results/" + str(now).replace(" ", "_").replace(":","_").split(".")[0]
-
-# if not os.path.isdir(mypath):
-#     os.makedirs(mypath)
-
 # FOR THE REST OF THE GROUP:
 # conda install -c anaconda pyamg
 # pip install chardet
 
 
-# import pyamg
-patient_dest_dir = Path("/Users/Bram/Documents/RP/miccai_data_numpy/part1/0522c0002")
+import pyamg
 
-# img = np.load(patient_dest_dir.joinpath("img.npy"))
-# structures = np.load(patient_dest_dir.joinpath("structures.npy")).astype(int)
-# structures[structures != 3] = 0
-#
-# # img = img[slice_num]
-# labels = np.zeros(img.shape).astype(int)
-# bg = np.zeros(img.shape).astype(int)
-# fg = np.zeros(img.shape).astype(int)
-def segment(img):
-    #
-    #
-    #
-    #
-    # background_points =[[60.0, 136.47753262356466, 254.1685778586176], [60.0, 119.59000417000847, 241.17817135588206], [60.0, 140.63446270444004, 221.5626575367514], [60.0, 131.6710822175525, 281.4484315143622], [62.0, 137.51676514378352, 254.81809818375436], [62.0, 121.66846921044616, 218.0552477810128], [62.0, 105.17065295197203, 255.98723476900057], [62.0, 114.65364969896896, 283.6568006198272], [64.0, 131.80098628257986, 255.98723476900057], [64.0, 163.49757814925457, 218.70476810614957], [64.0, 155.83323831264062, 210.7806201394809], [64.0, 106.989309862355, 275.08313232802175], [64.0, 155.18371798750383, 291.5809485864959], [65.0, 135.8280122984279, 254.9480022487817], [65.0, 168.9535488804035, 227.1485323329277], [65.0, 122.44789360061029, 220.7832331465873], [65.0, 107.11921392738236, 274.56351606791236], [65.0, 160.76959278368008, 298.4658640329457], [65.0, 178.95616188750984, 308.07876484497], [65.0, 188.1793505044521, 206.75359412363292], [66.0, 132.19069847766193, 254.1685778586176], [66.0, 166.8750838399658, 228.05786078811917], [66.0, 165.31623505963753, 291.5809485864959], [66.0, 178.8262578224825, 312.8852152509821], [66.0, 126.34501555143095, 291.45104452146853], [66.0, 106.33978953721824, 244.94538924167534], [66.0, 171.42172611592326, 206.36388192855082], [66.0, 191.81666432521803, 206.36388192855082], [67.0, 131.54117815252516, 253.2592494034261], [67.0, 150.76697977657375, 244.5556770465933], [67.0, 194.15493749571044, 207.14330631871496], [67.0, 159.73036026346125, 208.44234696898852], [67.0, 104.00151636672584, 254.1685778586176], [67.0, 169.2133570104582, 285.7352656602649], [67.0, 189.60829521975296, 312.2356949258454], [69.0, 127.51415213667714, 256.89656322419205], [69.0, 157.26218302794152, 242.73702013621033], [69.0, 197.1427309913396, 214.54783802527422], [69.0, 157.0023748978868, 280.66900712419806], [69.0, 190.77743180499917, 304.96106728431346], [69.0, 150.11745945143696, 303.5321225690126], [69.0, 106.07998140716352, 253.90876972856287], [69.0, 129.20290498203278, 207.2732103837423], [70.0, 116.99192286946138, 212.20956485478183], [70.0, 105.69026921208146, 254.9480022487817], [70.0, 159.34064806837918, 309.1179973651889], [70.0, 161.67892123887157, 277.9410217586236], [70.0, 131.15146595744312, 250.2714559077969], [70.0, 186.10088546401442, 226.75882013784562], [70.0, 197.40253912139434, 203.50599249794905], [72.0, 143.36244807001452, 278.5905420837604], [72.0, 118.03115538968025, 254.42838598867235], [72.0, 151.41650010171054, 232.0848868039672], [72.0, 161.80882530389897, 211.94975672472714], [72.0, 199.09129196674994, 213.89831770013745], [72.0, 171.8114383110053, 292.87998923676946], [72.0, 164.40690660444608, 306.13020386955975], [72.0, 192.98580091046423, 310.4170380154625], [73.0, 147.51937815088988, 283.5268965547999], [73.0, 172.98057489625154, 288.46325102583944], [73.0, 168.56383668532143, 307.5591485848606], [73.0, 190.1279114798624, 307.9488607799427], [73.0, 196.8829228612849, 210.52081200942624], [73.0, 180.77481879789283, 231.5652705438578], [73.0, 173.75999928641565, 207.4031144487697], [73.0, 149.59784319132757, 232.86431119413135], [74.0, 155.05381392247648, 227.40834046298244], [74.0, 166.74517977493846, 212.72918111489128], [74.0, 197.92215538150373, 211.04042826953565], [74.0, 182.98318790335787, 223.3813144471344], [74.0, 154.53419766236706, 285.6053615952376], [74.0, 176.74779278204483, 293.3996054968789], [74.0, 165.18633099461022, 308.7282851701068], [74.0, 192.07647245527275, 308.5983811050795], [76.0, 160.76959278368014, 223.25141038210705], [76.0, 201.94918139735177, 208.8320591640706], [76.0, 159.3406480683792, 188.69692908483054], [76.0, 184.15232448860408, 230.39613395861159], [76.0, 155.70333424761327, 287.42401850562055], [76.0, 149.33803506127285, 342.5033420772192], [76.0, 181.03462692794756, 295.3481664722892], [76.0, 193.89512936565572, 310.0273258203804], [78.0, 159.3406480683792, 290.9314282613592], [78.0, 177.00760091209952, 294.17902988704304], [78.0, 166.87508383996584, 312.49550305590014], [78.0, 195.9735944060934, 307.1694363897786], [78.0, 161.67892123887162, 221.43275347172408], [78.0, 178.69635375745514, 209.87129168428947], [78.0, 203.37812611265267, 209.74138761926213], [78.0, 187.91954237439737, 224.2906429023259], [80.0, 179.60568221264663, 296.9070152526175], [80.0, 184.9317488787682, 212.46937298483658], [80.0, 193.89512936565572, 206.1040737984962], [80.0, 161.28920904378953, 215.19735835041104], [80.0, 202.20898952740646, 219.0944803012317], [80.0, 167.91431636018467, 310.1572298854078], [80.0, 155.5734301825859, 290.8015241963318], [82.0, 187.5298301793153, 210.6507160744536], [82.0, 200.9099488771329, 195.5818445312804], [82.0, 209.48361716893834, 214.4179339602469], [82.0, 159.99016839351597, 217.79543965095814], [82.0, 169.862877335595, 201.55743152253874], [82.0, 185.45136513887763, 268.7178331416814], [82.0, 179.08606595253724, 295.4780705373166], [82.0, 165.1863309946102, 308.5983811050795], [82.0, 202.72860578751587, 310.6768461455172], [83.0, 179.47577814761928, 303.1424103739306], [83.0, 196.2334025361481, 287.55392257064796], [83.0, 203.2482220476253, 310.5469420804898], [83.0, 153.88467733723027, 295.607974602344], [83.0, 185.84107733395967, 211.43014046461775], [83.0, 158.95093587329714, 212.85908517991865], [83.0, 168.56383668532143, 202.33685591270287], [83.0, 202.9884139175706, 224.55045103238064], [83.0, 210.65275375418454, 208.44234696898857], [83.0, 197.66234725144903, 195.45194046625303], [85.0, 182.72337977330318, 209.74138761926213], [85.0, 155.96314237766796, 209.61148355423478], [85.0, 213.25083505473168, 211.94975672472717], [85.0, 197.4025391213943, 195.97155672636245], [85.0, 204.15755050281678, 231.95498273893986], [85.0, 179.73558627767397, 303.1424103739306], [85.0, 199.35110009680466, 290.9314282613592], [85.0, 201.8192773323244, 305.3507794793956], [85.0, 191.94656839024537, 323.9270607783074], [85.0, 156.87247083285948, 297.5565355777543], [85.0, 167.65450823012998, 290.0220998061677], [85.0, 163.4975781492546, 307.689052649888], [87.0, 171.68153424597799, 303.66202663404], [87.0, 163.75738627930932, 292.1005648466054], [87.0, 156.87247083285948, 307.1694363897786], [87.0, 145.70072124050694, 326.6550461438819], [87.0, 149.20813099624553, 242.73702013621036], [87.0, 181.55424318805697, 220.9131372116147], [87.0, 192.2063765203001, 259.1049323296572], [87.0, 188.82887082958888, 201.9471437176208], [87.0, 153.36506107712086, 209.2217713591527], [87.0, 132.45050660771668, 227.0186282679004]]
-    # forground_points = [[87.0, 162.19853749898104, 302.4928900487938], [85.0, 199.87071635691404, 211.68994859467247], [85.0, 193.3755131055463, 305.090971349341], [85.0, 163.10786595417252, 301.1938493985203], [83.0, 200.52023668205084, 211.81985265969982], [83.0, 194.41474562576514, 304.9610672843136], [83.0, 165.05642692958284, 299.89480874824676], [83.0, 167.91431636018467, 213.11889330997337], [81.0, 197.92215538150373, 211.81985265969982], [81.0, 168.17412449023936, 215.0674542853837], [81.0, 189.34848708969827, 305.35077947939567], [81.0, 166.0956594498017, 298.0761518378638], [79.0, 191.81666432521803, 212.59927704986396], [79.0, 168.82364481537616, 217.6655355859308], [79.0, 167.5246041651026, 297.81634370780904], [79.0, 181.1645309929749, 303.92183476409474], [77.0, 170.38249359570443, 218.70476810614966], [77.0, 189.34848708969827, 213.3787014400281], [77.0, 164.017194409364, 294.95845427720724], [77.0, 186.10088546401442, 305.87039573950506], [75.0, 168.56383668532143, 221.30284940669677], [75.0, 187.5298301793153, 213.76841363511016], [75.0, 160.50978465362542, 291.8407567165507], [75.0, 181.8140513181117, 304.9610672843136], [73.0, 163.23777001919987, 222.861698187025], [73.0, 184.80184481374084, 214.807646155329], [73.0, 157.26218302794152, 289.89219574114037], [73.0, 178.3066415623731, 304.1816428941495], [71.0, 159.86026432848863, 224.68035509740798], [71.0, 183.762612293522, 214.67774209030165], [71.0, 155.18371798750383, 292.4902770416875], [71.0, 177.26740904215424, 303.92183476409474], [69.0, 185.45136513887763, 214.54783802527427], [69.0, 157.52199115799624, 222.3420819269156], [69.0, 125.9553033563489, 240.78845916080007], [69.0, 117.5115391295708, 263.3917664755599], [69.0, 130.8916578273884, 275.47284452310396], [69.0, 152.45573262192937, 289.89219574114037], [69.0, 178.17673749734573, 304.3115469591768], [68.0, 184.6719407487135, 214.28802989521958], [68.0, 165.96575538477433, 218.96457623620438], [68.0, 152.58563668695675, 225.8494916826542], [68.0, 128.2935765268413, 238.45018599030766], [68.0, 119.33019603995378, 253.12934533839882], [68.0, 124.7861667711027, 269.88696972692765], [68.0, 139.98494237930328, 285.60536159523764], [68.0, 156.61266270280476, 295.21826240726193], [68.0, 174.66932774160713, 303.4022185039853], [66.0, 180.77481879789283, 214.1581258301922], [66.0, 149.46793912630022, 223.38131444713446], [66.0, 127.64405620170452, 238.3202819252803], [66.0, 117.2517309995161, 255.07790631380914], [66.0, 128.55338465689601, 276.64198110835014], [66.0, 146.35024156564367, 291.71085265152334], [66.0, 168.82364481537616, 303.4022185039853], [64.0, 174.14971148149772, 213.76841363511016], [64.0, 147.64928221591725, 224.81025916243536], [64.0, 118.16105945470758, 241.5678835509642], [64.0, 115.69288221918784, 262.87215021545046], [64.0, 134.26916351809965, 283.916608749882], [62.0, 129.33280904706015, 232.60450306407665], [62.0, 115.56297815416048, 242.21740387610097], [62.0, 114.78355376399634, 258.7152201345751], [62.0, 121.14885295033676, 275.2130363930492]]
-    # background_points = np.array(background_points).astype(int)
-    # forground_points = np.array(forground_points).astype(int)
-    #
-    #
-    # for point in background_points:
-    #     if point[0] == slice_num:
-    #         # labels[flood(img,(point[1],point[2]),tolerance=10)] = 2
-    #         labels[point[1]][point[2]] = 2
-    # for point in forground_points:
-    #     if point[0] == slice_num:
-    #         # labels[flood(img,(point[1],point[2]),tolerance=10)] = 1
-    #         labels[point[1]][point[2]] = 1
-    #
-    # labels = expand_labels(labels,3)
-    # fg[labels==1] = 1
-    # bg[labels==2] = 1
-    # gaus = gaussian(img,sigma=3)
-    #
-    # for i in range(len(fg)):
-    #     for j in range(len(fg[i])):
-    #         if fg[i][j] == 1:
-    #             fg[flood(gaus,(i,j),tolerance=10)] = 1
-    #         if bg[i][j] == 1:
-    #             bg[flood(gaus,(i,j),tolerance=10)] = 1
-    #
-    #
-    # # for i in range(1,len(fg)+1):
-    # #     for j in range(1,len(fg[-i])+1):
-    # #         if fg[-i][-j] == 1:
-    # #             fg[flood(gaus,(-i,-j),tolerance=3)] = 1
-    # #         if bg[-i][-j] == 1:
-    # #             bg[flood(gaus,(-i,-j),tolerance=2)] = 1
-    # #
-    #
-    # fg = area_closing(fg,connectivity=150)
-    # bg = area_closing(bg,connectivity=150)
-    # zero = np.min(img)
-    # one = np.max(img)
-    # img -= zero
-    # img /= (one-zero)
-    # img = np.stack((img,img,img), axis=2)
-    # img[fg==1] = [0,1,0]
-    # img[bg==1] = [1,0,0]
-    # plt.imshow(img)
-    # plt.show()
+def segment(image,seed_points):
+    seed_points = seed_points.astype(int)
+    if seed_points is None or np.count_nonzero(seed_points) == 0:
+        print('there are no seedpoints provided!')
+    else:
+        print("Segmenting with {} seed points...".format(np.count_nonzero(seed_points)))
 
+    for index,slice in enumerate(seed_points):
+        # if index == 0 or index == len(seed_points)-1:
+        #     seed_points[index] = np.ones(slice.shape)*2
+        #     continue
+        if np.count_nonzero(slice) == 0:
+            continue
 
+        new_image = np.ones(slice.shape)*2
+        # img = np.ones(slice.shape)
+        # dilated = binary_dilation(slice,footprint=np.ones((3, 3)))
+        background_start = (0,0)
+        for i in range(len(slice)):
+            if slice[background_start[0],background_start[1]] == 0:
+                break
+            for j in range(len(slice[0])):
+                if slice[i,j] == 0:
+                    background_start = (i,j)
+                    break
 
-    # fg[bg==1] = 2
-    # result = random_walker(img, fg, beta=0.01, mode='cg_j',tol=0.01, copy=False)
-    # zero = np.min(img)
-    # one = np.max(img)
-    # img -= zero
-    # img /= (one-zero)
-    # img = np.stack((img,img,img), axis=2)
-    # img[result==1] = [0,1,0]
-    # plt.imshow(img)
-    # plt.show()
+        # img[flood(dilated,background_start)] = 2
+        # img[dilated] = 0
+
+        # check for regions where dilation fully removed all organ labels
+        contours, hierarchy = cv.findContours(slice.astype(np.uint8), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+        for contour in contours:
+            draw_contour = np.zeros(slice.shape)
+            for point in contour:
+                draw_contour[point[0][1], point[0][0]] = 1
+
+            dilation = binary_dilation(draw_contour,footprint=np.ones((3, 3)))
+            filled_background = np.ones(slice.shape)
+            filled_background[flood(dilation,background_start)] = 2
+
+            # img = filled_background
+            # img[dilation] = 0
+            # if np.count_nonzero(img==1) != 0:
+            #     new_image[img==1] = 1
+            #     new_image[img==0] = 0
+            #     continue
+
+            dilation = binary_dilation(draw_contour,footprint=np.ones((2, 2)))
+            img = np.ones(slice.shape)
+            img[flood(dilation,background_start)] = 2
+            img[dilation] = 0
+
+            if np.count_nonzero(img==1) != 0:
+                new_image[filled_background==1] = 0
+                new_image[img==1] = 1
+                continue
+
+            dilation = binary_dilation(draw_contour,footprint=np.ones((1, 1)))
+            img = np.ones(slice.shape)
+            img[flood(dilation,background_start)] = 2
+            img[dilation] = 0
+
+            if np.count_nonzero(img==1) != 0:
+                new_image[filled_background==1] = 0
+                new_image[img==1] = 1
+                continue
+
+            new_image[draw_contour==1] = 1
 
 
+        seed_points[index] = new_image
 
+    # return seed_points,None
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    contour_points = []
-    lines = None
-    with open('data.txt') as f:
-        lines = f.readlines()
-    if lines == None:
-        print("something went wrong with file reading")
-    for line in lines[1:]:
-
-        for point in line[2:-3].split("], ["):
-            contour_points.append(list(map(float,point.split(", "))))
-
-        # for point in lines[1][2:-3].split("], ["):
-        #     background.append(list(map(int,point.split(", "))))
-
-    # else:
-    #     for point in np.array(forground_points).astype(int):
-    #         mandible.append(point)
-    #
-    #     for point in np.array(background_points).astype(int):
-    #         background.append(point)
-    seeds = np.zeros(img.shape)
-    drawings = np.zeros(img.shape)
-    slices = []
-    contour_points = np.unique(contour_points,axis=0)
-    for point in contour_points:
-        point = np.array(point).astype(int)
-
-        seeds[point[0],point[1],point[2]] = 1
-        drawings[point[0],point[1],point[2]] = 1
-        slices.append(point[0])
-
-
-    slices = np.unique(slices)
-
-
-    for slice in slices:
-        # print(slice)
-
-        # dilation ?
-
-        im = seeds[slice]
-        # for i in range(1,len(im)-1):
-        #     for j in range(1,len(im[0])-1):
-        #         if im[i,j] == 1 and np.sum(im[i-1:i+2,j-1:j+2])  == 1:
-        #             im[i,j] = 0
-        im = binary_dilation(im,footprint=np.ones((3, 3))).astype(np.uint8)
-        # astype(np.uint8)
-        # plt.imshow(im,cmap='gray')
-        # plt.show()
-        contours, hierarchy = cv.findContours(im, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
-        contours = sorted(contours,key= lambda x: len(x))
-        new_seeds = np.zeros((im.shape))
-        cv.fillPoly(new_seeds,pts=[np.array(contours[-2],dtype=np.int32)],color=1)
-
-        # for point in contours[-2]:
-        #     new_seeds[point[0][1],point[0][0]] = 1
-        for point in contours[-1]:
-            new_seeds[point[0][1],point[0][0]] = 2
-        new_seeds[flood(binary_dilation(new_seeds,footprint=np.ones((3, 3))).astype(np.uint8),(0,0))] = 2
-        for point in contours[-1]:
-            new_seeds[point[0][1],point[0][0]] = 0
-        # new_seeds[flood(new_seeds,(0,0))] = 2
-        # for i in range(len(new_seeds)):
-        #     for j in range(len(new_seeds[0])):
-        #         if i == 0 or i == len(new_seeds)-1 or j == 0 or j==len(new_seeds[0]):
-        #             new_seeds[i,j] = 2
-        seeds[slice] = new_seeds
-        # for c in contours[-2:]:
-        #     # if len(c) < 5:
-        #     #     continue
-        #     # test = np.zeros((im.shape))
-        #     for point in c:
-        #         test[point[0][1],point[0][0]] = 1
-        #     plt.imshow(test,cmap='gray')
-        #     plt.show()
-
-
-
-    # seeds[seeds == 2] = 0 # for plot in gray
-    # plt.imshow(seeds,cmap='gray')
-    # plt.show()
-
-
-    # print(np.count_nonzero(test))
-
-    # for point in background:
-    #     # test[flood(img,(point[0],point[1],point[2]))] = 1
-    #     bg[point[0],point[1],point[2]] = 1
-
-    # fg = binary_dilation(fg,footprint=ball(2))
-    # bg = binary_dilation(bg,footprint=ball(2))
-
-    # fg[bg==1] = 2
-    # fg = expand_labels(fg,1)
-
-    # img = img[59:90,100:300,180:340]
-    # structures = structures[59:90,100:300,180:340]
-    # test = test[59:90,100:300,180:340]
     start_time = time.time()
-    prob = random_walker(img, seeds, beta=0.1, mode='cg_j',tol=0.1, copy=False, return_full_prob=True)
-    # segmentation = random_walker(img, seeds, beta=0.1, mode='cg_j',tol=0.1, copy=False).astype(int)
+    prob = random_walker(image, seed_points.astype(int), beta=0.1, mode='cg_j',tol=0.001, copy=False, return_full_prob=True)
     print(time.time() - start_time, "seconds")
 
-    # labels[labels==1] = 0
-
-    labels = np.zeros(img.shape).astype(int)
-    labels[prob[1]>=0.5] = 1
-
-
-    # np.save(mypath+"/0522c0002_mandible_segmentation", labels)
-    # np.save(mypath+"/0522c0002_mandible_img", img)
-    # np.save(mypath+"/0522c0002_mandible_structures", structures)
-    # np.save(mypath+"/0522c0002_mandible_probabilities", prob)
-
-    # show = True
-    # use_napari = True
-    #
-    # if show and not use_napari:
-    #     import matplotlib.pyplot as plt
-    #
-    #     slice_num = 65
-    #     fig, ax = plt.subplots(layout="tight", figsize=(5, 5))
-    #     ax.imshow(img[slice_num], cmap="gray")
-    #     # ax.imshow(structures[slice_num], alpha=(structures[slice_num] > 0).astype(float))
-    #     ax.set_axis_off()
-    #     plt.show()
-    #
-    # elif show:
-    #     import napari
-    #
-    #     viewer = napari.Viewer()
-    #     viewer.add_image(img, name="CT scan", colormap="gray", interpolation2d="bicubic")
-    #
-    #     viewer.add_labels(seeds.astype(int), name="seeds")
-    #     viewer.add_labels(labels, name="result of rw")
-    #     # viewer.add_labels(d, name="fg")
-    #     # viewer.add_labels(bg, name="bg")
-    #     napari.run()
-
-    # takes an 3D image, returns a graph for random
-
-    #def process_input():
-    #    return
-
-    #def random_walker():
-    #    return
-
-    # takes a 3D image, returns the segmentation (labels, uncertainties, etc.)
-
+    labels = np.zeros(image.shape).astype(int)
+    labels[prob[0]>=0.5] = 1
     return labels,prob
+
 

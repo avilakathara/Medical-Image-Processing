@@ -6,7 +6,7 @@ import scipy.ndimage as sn
 
 binary_labels = []
 
-def calculate_uncertainty_fields(image, label, prob, combine_fields=True):
+def calculate_uncertainty_fields(image, label, prob):
     """
     Method for calculating uncertainty fields
 
@@ -14,10 +14,10 @@ def calculate_uncertainty_fields(image, label, prob, combine_fields=True):
     @param label:   3D image of segmentation (0 for background, 1 for organ 1, etc.)
     @param prob:    1D + 3D arrays containing classification probabilities of each voxels, for each labels
 
-    @param combine_fields: if True, combine fields into 1 3D uncertainty field
-
     @return:        (1D +) 3D arrays containing uncertainty values of each voxels, for each labels
     """
+
+    print("Calculating uncertainty fields...")
 
     # get image size; ps is the number of label types
     ps, px, py, pz = prob.shape
@@ -38,25 +38,16 @@ def calculate_uncertainty_fields(image, label, prob, combine_fields=True):
 
     # parameters for foreground & background distributions
     # [(mean_0, std_0), (mean_1, std_1), ...]
-    print("Calculating distributions...")
     global binary_labels
     binary_labels = convert_to_binary(label, ps)
     # distributions = gaussian_foreground_background(image, label, ps)
 
     # distance maps (or transform)
     # [(distance_from_0, distance_from_1), (df0, df2), ...]
-    print("Calculating distance maps...")
     # distance_maps = get_distance_maps(label, ps)
 
     # image gradient
-    print("Calculating gradient...")
     # dx, dy, dz = np.gradient(image)
-
-    # initialize output uncertainty field
-    # output_field = np.zeros((ps - 1, px, py, pz))
-    # if combine_fields:
-    #     output_field = np.zeros((px, py, pz))
-    output_field = []
 
     # vectorize functions
     vec_entropy_e = np.vectorize(entropy_energy)
@@ -66,12 +57,10 @@ def calculate_uncertainty_fields(image, label, prob, combine_fields=True):
     # assert len(distributions) > 0
 
     # calculate uncertainty for each voxel
-    for ll in range(1, ps):
-        print("processing label: " + str(ll))
-        u_e = vec_entropy_e(prob[ll])
-        # u_r = vec_regional_e(image, binary_labels[ll],
-        #                      distributions[0][0], distributions[0][1], distributions[1][0], distributions[1][1])
-        output_field.append(u_e)
+    u_e = vec_entropy_e(prob[0])
+    # u_r = vec_regional_e(image, binary_labels[ll],
+    #                      distributions[0][0], distributions[0][1], distributions[1][0], distributions[1][1])
+    output_field = u_e
 
     # for x in range(px):
     #     print("Working... x = " + str(x))
@@ -84,11 +73,6 @@ def calculate_uncertainty_fields(image, label, prob, combine_fields=True):
     #                 # SLOW (with regional energy)
     #                 # u_r = regional_energy(image[x, y, z], label[x, y, z], distributions[0], distributions[p])
     #                 # output_field[p, x, y, z] = 0.8 * u_e + 0.2 * u_r  # + 0.05 * u_b
-
-    output_field = np.array(output_field)
-
-    if combine_fields:
-        return (output_field-np.min(output_field))/(np.max(output_field)-np.min(output_field))
 
     return output_field
 
