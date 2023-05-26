@@ -86,68 +86,111 @@ def gradient_descent(uncertainty, start_pos, start_normal, step_size, gradients)
             current_pos[2] = m_z - 2
 
         # Update the point position based on equation 8
-        gradient, indexes = get_point_gradient(uncertainty, current_pos, current_normal, gradients)
+        gradient, indexes, uv_indexes = get_point_gradient(uncertainty, current_pos, current_normal, gradients)
 
         print("current gradient: " + str(gradient))
         print("current point: " + str(current_pos))
+
+        # Update the normal based on equation 7
+        update_value = get_normal_update(current_normal, gradients, indexes, uv_indexes, current_pos)
+        print(update_value)
 
         # TODO: Maybe make the step size reduction dynamic using i
         # gradient ascent
         mult = gradient * step_size
         current_pos += mult.astype(int)
 
-        # Update the normal based on equation 7
-        update_value = get_normal_update(current_normal, gradients, indexes)
-        print(update_value)
-
     return current_pos, current_normal
 
 
-def get_normal_update(normal, gradients, indexes):
-    # Do u times Jacobian of a
+def get_normal_update(normal, gradients, indexes, uv_indexes, point):
+    # # Do u times Jacobian of a
     matrix_a = np.array([[-normal[0], -normal[1], -normal[2]], [0, 0, 0]])
-    #res_a = matrix_a * indexes
-    res_a = np.dot(matrix_a, indexes.T)
-
-    # Do v times Jacobian of b
+    # #res_a = matrix_a * indexes
+    # res_a = np.dot(matrix_a, indexes.T)
+    #
+    # # Do v times Jacobian of b
     matrix_b = np.array([[0, 0, 0], [-normal[0], -normal[1], -normal[2]]])
-    #res_b = matrix_b * indexes
-    res_b = np.dot(matrix_b, indexes.T)
+    # #res_b = matrix_b * indexes
+    # res_b = np.dot(matrix_b, indexes.T)
+    #
+    # # Sum the two values above
+    # matrix_sum = res_a + res_b
+    #
+    # # get [x,y,z] gradient values from current plane
+    # gradient_planes = gradients[:, indexes[:, 0], indexes[:, 1], indexes[:, 2]]
+    #
+    # update_x = np.dot(matrix_sum, gradient_planes[0])
+    # update_y = np.dot(matrix_sum, gradient_planes[1])
+    # update_z = np.dot(matrix_sum, gradient_planes[2])
 
-    # Sum the two values above
-    matrix_sum = res_a + res_b
+    # normal_update = [update_x, update_y, update_z]
+    sum = 0
+    for uv in uv_indexes:
+        u = uv[0]
+        v = uv[1]
 
-    # get [x,y,z] gradient values from current plane
-    gradient_planes = gradients[:, indexes[:, 0], indexes[:, 1], indexes[:, 2]]
+    return
 
-    update_x = np.dot(matrix_sum, gradient_planes[0])
-    update_y = np.dot(matrix_sum, gradient_planes[1])
-    update_z = np.dot(matrix_sum, gradient_planes[2])
-
-    normal_update = [update_x, update_y, update_z]
-    return normal_update
+def distance(point, index):
+    return np.sqrt((point[0] - index[0] ** 2) + (point[1] - index[1] ** 2) + (point[2] - index[2] ** 2))
 
 
 # returns the gradient vector of the plane defined by the given point and normal
 def get_point_gradient(uncertainty, point, current_normal, gradients):
     # Get the plane in relation to the x and normal
-    indexes = get_indexes_in_plane(uncertainty, point, current_normal, 0.00001)
+    #indexes = get_indexes_in_plane(uncertainty, point, current_normal, 0.00001)
+    uv_indexes, indexes = get_indices(current_normal, point, uncertainty)
 
     gradient_plane = gradients[:, indexes[:, 0], indexes[:, 1], indexes[:, 2]]
 
     # sum up the planes to get three sums
     gradient_vector = np.sum(gradient_plane, axis=1)
 
-    return gradient_vector, indexes
+    return gradient_vector, indexes, uv_indexes
+
+
+# Input: -a normal and reference point that define a plane
+#        -a 3D array of uncertainties TODO: can be replaced by just its shape?
+# Returns indices of
+def get_indices(normal, point, uncertainty):
+    # calculate normalized vectors orthogonal to the plane's normal
+    normal, u, v = get_orthonormal_vectors(normal)
+    # set the maximum values for a and b to iterate over
+    # TODO the current max sizes are overestimates, can we make it smaller, is that even necessary?
+    max_axis_size = np.max(uncertainty.shape) * 2
+    max_a = max_axis_size
+    max_b = max_axis_size
+    min_a = -max_axis_size
+    min_b = -max_axis_size
+
+    ab_array = []
+    xyz_array = []
+    # iterate over all possible a and b values
+    for a in range(min_a, max_a):
+        for b in range(min_b, max_b):
+            # calculate the xyz coordinate as a linear combination of u and v, offset by the reference point
+            xyz = point + (a * u + b * v).astype(np.uint8)
+            # check whether the calculated point falls within the uncertainty field
+            if not (xyz[0] < 0 or xyz[1] < 0 or xyz[2] < 0 or xyz[0] >= uncertainty.shape[0] or
+                    xyz[1] >= uncertainty.shape[1] or xyz[2] >= uncertainty.shape[2]):
+                # matching (a,b) and (x,y,z) point will have the same index in the two arrays
+                ab_array.append([a, b])
+                xyz_array.append(xyz)
+
+    return np.array(ab_array), np.array(xyz_array)
 
 
 def get_indexes_in_plane(array, position, normal, tolerance):
     A, B, C = normal
     D = -(A * position[0] + B * position[1] + C * position[2])  # Precompute the D constant
 
-    min_i, max_i = 0, array.shape[0] - 1
-    min_j, max_j = 0, array.shape[1] - 1
-    min_k, max_k = 0, array.shape[2] - 1
+    min_i = 0
+    max_i = array.shape[0] - 1
+    min_j = 0
+    max_j = array.shape[1] - 1
+    min_k =  0
+    max_k = array.shape[2] - 1
 
     indexes_in_plane = []
 
@@ -155,11 +198,12 @@ def get_indexes_in_plane(array, position, normal, tolerance):
         for j in range(min_j, max_j + 1):
             for k in range(min_k, max_k + 1):
                 result = A * i + B * j + C * k + D
-
                 if abs(result) <= tolerance:
                     indexes_in_plane.append([i, j, k])
 
     return np.array(indexes_in_plane)
+
+
 
 
 def get_gradients(arr):
@@ -182,21 +226,13 @@ def get_xygrad(plane):
 
     return mult_x, mult_y
 
-    # sx = ndimage.sobel(plane, axis=0, mode='constant')
-    # mx = abs(sx * plane)
-    # #print(mx)
-    # sy = ndimage.sobel(plane, axis=0, mode='constant')
-    # my = abs(sy * plane)
-    # #print(mx)
-    # return mx, my
-
 
 def get_grad(plane):
     x, y = get_xygrad(plane)
     return (np.sum(x) + np.sum(y))
 
 
-def rotate(normal):
+def rotate(normal, arr):
     # Compute the rotation angle and axis
     angle = np.arccos(normal[0])
     # Axis: (1,0,0) = (1,2), (0,1,0) = (0,2), (0,0,1) = (0,1)
@@ -223,6 +259,17 @@ if __name__ == "__main__":
     # test_arr = test_arr + noise
     # np.save('my_array.npy', test_arr)
     test_arr = np.load('test_data/my_array.npy')
+
+    ab_array, xyz_array = get_indices([1,-1,0], [7,10,10], test_arr)
+    print(ab_array)
+    print(xyz_array)
+
+    # asdf = np.reshape(np.arange(5*5*5), (5,5,5))
+    #
+    # normal = [np.sqrt(2)/2,np.sqrt(2)/2,0]
+    # rotated = rotate(unrotated,test_arr)
+    # print("rotated array:")
+    # print(rotated)
     # print("Mean values of planes: " + str(np.mean(test_arr, (1, 2))))
     # x = int(np.random.uniform(1, 19))
     #
@@ -233,11 +280,11 @@ if __name__ == "__main__":
     # Rotate the uncertainty according to normal
     # plane = arr[:, :, x] + np.outer(normal, np.arange(arr.shape[0])) + np.outer(np.arange(arr.shape[1]), normal)
 
-    arr = []
+    # arr = []
     # ra = np.load('uncertainty.npy')
 
-    uncertainty_plane, highest_point, normal, _ = get_optimal_slice(test_arr)
-    print(highest_point)
+    # uncertainty_plane, highest_point, normal, _ = get_optimal_slice(test_arr)
+    # print(highest_point)
 
     # for x in range(1, len(ra)):
     #     arr.append(get_grad(ra[x]))
@@ -256,3 +303,4 @@ if __name__ == "__main__":
     # print(test_arr[h_x - 1])
     # print(np.sum(test_arr[1]))
     # print(np.sum(test_arr[4]))
+
