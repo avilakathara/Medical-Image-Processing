@@ -8,7 +8,7 @@ from qtpy.QtWidgets import QMessageBox
 import cv2 as cv
 
 from segmentation.livewire import *
-from segmentation.segmentation import segment
+from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
@@ -79,16 +79,18 @@ probabilities = None
 uncertainty_field = None
 livewire = None
 click_count = 0
+contours = None
 seed_points = None
 lw_layer = None
 fetched_plane_index = None
 
 iterations = 0
 
-def create_seedpoints(viewer):
+def create_contours(viewer):
     global livewire
     global click_count
     global seed_points
+    global contours
     global lw_layer
     global mypath # test shit
     global simulate_user_input
@@ -97,24 +99,24 @@ def create_seedpoints(viewer):
     global fetched_plane_index
 
     if livewire is not None:
-        seed_points = livewire.drawing
+        contours = livewire.drawing
         livewire = None
-        # np.save("seeds", seed_points)
+        # np.save("contours", contours)
         return
 
     if simulate_user_input:
         if iterations > 0:
-            seed_points = auto_add_seeds(seed_points, ground_truth, segmentation, fetched_plane_index)
-            # np.save("seeds", seed_points)
-            lw_layer = viewer.add_labels(seed_points, name='additional seed points (automatic)', opacity=1.0)
+            contours = auto_add_contours(contours, ground_truth, segmentation, fetched_plane_index)
+            # np.save("contours", contours)
+            lw_layer = viewer.add_labels(contours, name='additional contours (automatic)', opacity=1.0)
         else:
-            seed_points = automatic_seeds(ground_truth)
-            # np.save("seeds", seed_points)
-            lw_layer = viewer.add_labels(seed_points, name='seed points (automatic)',opacity=1.0)
+            contours = automatic_contours(ground_truth)
+            # np.save("contours", contours)
+            lw_layer = viewer.add_labels(contours, name='contours (automatic)',opacity=1.0)
     else:
         livewire = LiveWire2(img, sigma=5.0)
         lw_layer = viewer.add_labels(livewire.drawing,
-                                     name='seed points', opacity=1.0)
+                                     name='contours', opacity=1.0)
 
     def valid(coords):
         return 0 <= round(coords[0]) < img.shape[1] and 0 <= round(coords[1]) < img.shape[2]
@@ -166,7 +168,8 @@ def get_segmentation(viewer):
     global seed_points
     global mypath
     global iterations
-
+    if seed_points is None:
+        seed_points = convert_to_labels(contours)
     segmentation, probabilities = segment(img, seed_points)
     viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
 
@@ -213,7 +216,7 @@ def on_press_a(viewer):
         viewer.layers.remove(lw_layer)
     except:
         pass
-    create_seedpoints(viewer)
+    create_contours(viewer)
 
 # MAKE SEGMENTATION
 @viewer.bind_key('s')

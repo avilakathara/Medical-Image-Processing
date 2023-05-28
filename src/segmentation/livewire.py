@@ -146,7 +146,7 @@ def flatten_indices(indices,size_x):
     return round(y * size_x + x)
 
 
-def automatic_seeds(ground_truth):
+def automatic_contours(ground_truth):
     skips = 5
     slice = 0
     ground_truth[ground_truth!=0] = 1
@@ -164,7 +164,7 @@ def automatic_seeds(ground_truth):
             slice += skips
     return seed_points
 
-def auto_add_seeds(original, ground_truth, segmentation, slice):
+def auto_add_contours(original, ground_truth, segmentation, slice):
     ground_truth[ground_truth!=0] = 1
     segmentation[segmentation!=0] = 1
     diff = ground_truth - segmentation
