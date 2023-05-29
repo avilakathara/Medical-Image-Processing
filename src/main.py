@@ -10,6 +10,7 @@ import cv2 as cv
 from segmentation.livewire import *
 from segmentation.segmentation import segment
 from slice_select.optimization import get_optimal_slice
+from src.uncertainty.evaluate_uncertainty import evaluate_uncertainty
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
 from pathlib import Path
@@ -219,9 +220,13 @@ def on_press_a(viewer):
 @viewer.bind_key('s')
 def on_press_s(viewer):
     global iterations
+    global ground_truth
+    global segmentation
+    global uncertainty_field
     iterations += 1
     get_segmentation(viewer)
     get_uncertainty_field(viewer)
+    print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
     # user_check(viewer)
 
 @viewer.bind_key('c')
