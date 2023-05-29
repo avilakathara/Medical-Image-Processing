@@ -29,53 +29,63 @@ def convert_to_labels(drawn_contours):
     drawn_contours = drawn_contours.astype(int)
 
     for index,slice in enumerate(drawn_contours):
-        if np.count_nonzero(slice) == 0:
-            continue
-        new_image = np.ones(slice.shape)*2
-        background_start = (0,0)
-        for i in range(len(slice)):
-            if slice[background_start[0],background_start[1]] == 0:
-                break
-            for j in range(len(slice[0])):
-                if slice[i,j] == 0:
-                    background_start = (i,j)
-                    break
-
-        contours, hierarchy = cv.findContours(slice.astype(np.uint8), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
-        for contour in contours:
-            draw_contour = np.zeros(slice.shape)
-            for point in contour:
-                draw_contour[point[0][1], point[0][0]] = 1
-
-            dilation = binary_dilation(draw_contour,footprint=np.ones((3, 3)))
-            filled_background = np.ones(slice.shape)
-            filled_background[flood(dilation,background_start)] = 2
-
-            dilation = binary_dilation(draw_contour,footprint=np.ones((2, 2)))
-            img = np.ones(slice.shape)
-            img[flood(dilation,background_start)] = 2
-            img[dilation] = 0
-
-            if np.count_nonzero(img==1) != 0:
-                new_image[filled_background==1] = 0
-                new_image[img==1] = 1
-                continue
-
-            dilation = binary_dilation(draw_contour,footprint=np.ones((1, 1)))
-            img = np.ones(slice.shape)
-            img[flood(dilation,background_start)] = 2
-            img[dilation] = 0
-
-            if np.count_nonzero(img==1) != 0:
-                new_image[filled_background==1] = 0
-                new_image[img==1] = 1
-                continue
-
-            new_image[draw_contour==1] = 1
-
-
-        drawn_contours[index] = new_image
+        drawn_contours[index] = convert_to_labels2d(slice)
     return drawn_contours
+
+
+def convert_to_labels2d(slice):
+    # drawn_contours = drawn_contours.astype(int)
+    #
+    # for index,slice in enumerate(drawn_contours):
+    #
+    if np.count_nonzero(slice) == 0:
+        return slice
+    new_image = np.ones(slice.shape)*2
+    background_start = (0,0)
+    for i in range(len(slice)):
+        if slice[background_start[0],background_start[1]] == 0:
+            break
+        for j in range(len(slice[0])):
+            if slice[i,j] == 0:
+                background_start = (i,j)
+                break
+
+    contours, hierarchy = cv.findContours(slice.astype(np.uint8), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
+    for contour in contours:
+        draw_contour = np.zeros(slice.shape)
+        for point in contour:
+            draw_contour[point[0][1], point[0][0]] = 1
+
+        dilation = binary_dilation(draw_contour,footprint=np.ones((3, 3)))
+        filled_background = np.ones(slice.shape)
+        filled_background[flood(dilation,background_start)] = 2
+
+        dilation = binary_dilation(draw_contour,footprint=np.ones((2, 2)))
+        img = np.ones(slice.shape)
+        img[flood(dilation,background_start)] = 2
+        img[dilation] = 0
+
+        if np.count_nonzero(img==1) != 0:
+            new_image[filled_background==1] = 0
+            new_image[img==1] = 1
+            continue
+
+        dilation = binary_dilation(draw_contour,footprint=np.ones((1, 1)))
+        img = np.ones(slice.shape)
+        img[flood(dilation,background_start)] = 2
+        img[dilation] = 0
+
+        if np.count_nonzero(img==1) != 0:
+            new_image[filled_background==1] = 0
+            new_image[img==1] = 1
+            continue
+
+        new_image[draw_contour==1] = 1
+
+
+    return new_image
+
+    # return drawn_contours
 
 
 def segment(image, seed_points):

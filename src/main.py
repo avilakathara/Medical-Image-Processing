@@ -11,7 +11,7 @@ from segmentation.livewire import *
 from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from slice_select.discreet_optimization import discreet_get_optimal_slice
-from src.slice_select.rotation_methods import rotate
+from slice_select.rotation_methods import rotate
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
 from pathlib import Path
@@ -85,8 +85,10 @@ contours = None
 seed_points = None
 lw_layer = None
 fetched_plane_index = None
-
+chosen_slice = None
 iterations = 0
+normal = None
+point = None
 
 
 def create_contours(viewer):
@@ -109,7 +111,8 @@ def create_contours(viewer):
 
     if simulate_user_input:
         if iterations > 0:
-            contours = auto_add_contours(contours, ground_truth, segmentation, fetched_plane_index)
+            rotated_ground_truth = image_rotate(ground_truth,normal)
+            contours = auto_add_contours(rotated_ground_truth[point])
             # np.save("contours", contours)
             lw_layer = viewer.add_labels(contours, name='additional contours (automatic)', opacity=1.0)
         else:
@@ -172,8 +175,15 @@ def get_segmentation(viewer):
     global seed_points
     global mypath
     global iterations
+
+
     if seed_points is None:
         seed_points = convert_to_labels(contours)
+    else:
+        new_labeled_slice = convert_to_labels2d(contours)
+        rotate_seed_points = image_rotate(seed_points,normal)
+        rotate_seed_points[point] = new_labeled_slice
+        seed_points = image_rotate_back(rotate_seed_points,normal)
 
     segmentation, probabilities = segment(img, seed_points)
     viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
@@ -191,6 +201,9 @@ def get_uncertainty_field(viewer, draw=False):
 def user_check(viewer):
     global fetched_plane_index
     global iterations
+    global chosen_slice
+    global normal
+    global point
 
     # Find optimal slice
     # uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
@@ -203,8 +216,7 @@ def user_check(viewer):
     # Get the image
     # img = viewer.layers['CT_SCAN'].data
     # rotate here is needed
-    # TODO: this normal needs to be used to rotate the segmentation and the CT scan before taking the array at the point based on chosen axis
-    chosen_slice = []
+    # # TODO: this normal needs to be used to rotate the segmentation and the CT scan before taking the array at the point based on chosen axis
     discreet = True
     if chosen_axis == 'x' and discreet:
         chosen_slice = img[point]
