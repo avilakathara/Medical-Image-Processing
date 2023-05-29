@@ -1,3 +1,4 @@
+import os
 import napari
 import json
 import nrrd
@@ -169,7 +170,7 @@ def get_segmentation(viewer):
     segmentation, probabilities = segment(img, seed_points)
     viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
 
-def get_uncertainty_field(viewer, draw=False):
+def get_uncertainty_field(viewer, draw=True):
     global uncertainty_field
     uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
 
@@ -221,7 +222,7 @@ def on_press_s(viewer):
     iterations += 1
     get_segmentation(viewer)
     get_uncertainty_field(viewer)
-    user_check(viewer)
+    # user_check(viewer)
 
 @viewer.bind_key('c')
 def user_input(viewer):

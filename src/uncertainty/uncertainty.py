@@ -11,16 +11,20 @@ def calculate_uncertainty_fields(image, label, prob):
     Method for calculating uncertainty fields
 
     @param image:   3D image of intensity values
-    @param label:   3D image of segmentation (0 for background, 1 for organ 1, etc.)
+    @param label:   3D image of segmentation (0 for background, 1 for organ)
     @param prob:    1D + 3D arrays containing classification probabilities of each voxels, for each labels
 
-    @return:        (1D +) 3D arrays containing uncertainty values of each voxels, for each labels
+    @return:        3D uncertainty field for each voxels, for each labels
     """
 
     print("Calculating uncertainty fields...")
 
     # get image size; ps is the number of label types
     ps, px, py, pz = prob.shape
+    assert ps == 2
+
+    prob_fg = prob[0]
+    prob_bg = prob[1]
 
     # assure other 3D-arrays have same size
     lx, ly, lz = label.shape
@@ -38,41 +42,30 @@ def calculate_uncertainty_fields(image, label, prob):
 
     # parameters for foreground & background distributions
     # [(mean_0, std_0), (mean_1, std_1), ...]
-    global binary_labels
-    binary_labels = convert_to_binary(label, ps)
     # distributions = gaussian_foreground_background(image, label, ps)
 
     # distance maps (or transform)
-    # [(distance_from_0, distance_from_1), (df0, df2), ...]
-    # distance_maps = get_distance_maps(label, ps)
+    # (distance_from_0s, distance_from_1s)
+    df0, df1 = get_distance_maps(label)
 
     # image gradient
-    # dx, dy, dz = np.gradient(image)
+    dx, dy, dz = np.gradient(image)
 
     # vectorize functions
     vec_entropy_e = np.vectorize(entropy_energy)
+    vec_boundary_e = np.vectorize(boundary_energy)
     vec_regional_e = np.vectorize(regional_energy)
 
     # assert len(binary_labels) > 0
     # assert len(distributions) > 0
 
     # calculate uncertainty for each voxel
-    u_e = vec_entropy_e(prob[0])
+    u_e = vec_entropy_e(prob_fg)
     # u_r = vec_regional_e(image, binary_labels[ll],
     #                      distributions[0][0], distributions[0][1], distributions[1][0], distributions[1][1])
-    output_field = u_e
+    u_b = normalize_arr(vec_boundary_e(label, df0, df1, dx, dy, dz))
 
-    # for x in range(px):
-    #     print("Working... x = " + str(x))
-    #     for y in range(py):
-    #         for z in range(pz):
-    #             for p in range(0, ps - 1):
-    #                 u_e = entropy_energy(float(prob[p, x, y, z]))
-    #                 u_b = boundary_energy((x, y, z), label[x, y, z], distance_maps[p], (dx, dy, dz))
-    #
-    #                 # SLOW (with regional energy)
-    #                 # u_r = regional_energy(image[x, y, z], label[x, y, z], distributions[0], distributions[p])
-    #                 # output_field[p, x, y, z] = 0.8 * u_e + 0.2 * u_r  # + 0.05 * u_b
+    output_field = u_b
 
     return output_field
 
@@ -96,12 +89,6 @@ def regional_energy(intensity, bin_lab, bgm, bgs, fgm, fgs):
     if bin_lab:
         return gaussian_approx(intensity, fgm, fgs) / (fg + bg)
     return gaussian_approx(intensity, bgm, bgs) / (fg + bg)
-
-def convert_to_binary(label, n):
-    bin_labels = [None]
-    for i in range(1, n):
-        bin_labels.append((label == i))
-    return bin_labels
 
 def gaussian_foreground_background(image, label, n):
     ix, iy, iz = image.shape
@@ -132,10 +119,14 @@ def gaussian_approx(x, mean, std):
 
 # --- BOUNDARY ENERGY ---
 
-def boundary_energy(x_coord, label, dm, gradient, alpha=2):
-    delta = soft_delta_func(distance_to_boundary(x_coord, label, dm))
-    gradient_abs_pow = math.pow(voxel_norm(x_coord, gradient), alpha)
-    return delta / (1 + gradient_abs_pow)
+def boundary_energy(label, df0, df1, dx, dy, dz, alpha=2):
+    coef = soft_delta_func(df1)
+    if label == 1:
+        coef = soft_delta_func(df0)
+
+    grad_mag = nl.norm(np.array([dx, dy, dz]))
+
+    return coef / (1 + math.pow(grad_mag, alpha))
 
 def distance_to_boundary(x_coord, label, dm):
     x, y, z = x_coord
@@ -147,35 +138,17 @@ def distance_to_boundary(x_coord, label, dm):
         # voxel is classified as 1, get distance from nearest 0
         return df0[x, y, z]
 
-def voxel_norm(x_coord, gradient):
-    x, y, z = x_coord
-    dx, dy, dz = gradient
-    return nl.norm(np.array([dx[x, y, z], dy[x, y, z], dz[x, y, z]]))
+def soft_delta_func(x, alpha=1):
+    return math.pow(math.e, -(x * x) / (2 * alpha))
 
-def soft_delta_func(x):
-    return math.pow(math.e, -(x * x) / 2)
+def get_distance_maps(label):
+    label_inv = (~label.astype(bool)).astype(int)
+    return sn.distance_transform_edt(label), sn.distance_transform_edt(label_inv)
 
-def get_distance_maps(label, n):
-    lx, ly, lz = label.shape
-    labels = []
-    for i in range(1, n):
-        labels.append(np.zeros((lx, ly, lz)))
+# ---
 
-    for x in range(lx):
-        for y in range(ly):
-            for z in range(lz):
-                for i in range(0, n-1):
-                    if label[x, y, z] == i:
-                        labels[i][x, y, z] = 1
-                    else:
-                        labels[i][x, y, z] = 0
-
-    output_map = []
-    for i in range(0, n-1):
-        output_map.append(0)
-    for i in range(0, n-1):
-        output_map.append((
-            sn.distance_transform_edt(labels[i]),
-            sn.distance_transform_edt(np.invert(labels[i]))
-        ))
-    return output_map
+def normalize_arr(arr):
+    min_val = np.min(arr)
+    max_val = np.max(arr)
+    normalized_arr = (arr - min_val) / (max_val - min_val)
+    return normalized_arr
