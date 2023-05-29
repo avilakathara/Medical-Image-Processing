@@ -11,6 +11,7 @@ from segmentation.livewire import *
 from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from slice_select.discreet_optimization import discreet_get_optimal_slice
+from src.slice_select.rotation_methods import rotate
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
 from pathlib import Path
@@ -203,8 +204,17 @@ def user_check(viewer):
     # img = viewer.layers['CT_SCAN'].data
     # rotate here is needed
     # TODO: this normal needs to be used to rotate the segmentation and the CT scan before taking the array at the point based on chosen axis
-    chosen_slice = img[point]
-    fetched_plane_index = point
+    chosen_slice = []
+    discreet = True
+    if chosen_axis == 'x' and discreet:
+        chosen_slice = img[point]
+    elif chosen_axis == 'y' and discreet:
+        chosen_slice = img[:, point, :]
+    elif chosen_axis == 'z' and discreet:
+        chosen_slice = img[:, :, point]
+    elif chosen_axis == "d1" and discreet:
+        image_unrotate = rotate(uncertainty, [0, 0, 1], 315)
+        chosen_slice = image_unrotate[point]
 
     # viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
 
