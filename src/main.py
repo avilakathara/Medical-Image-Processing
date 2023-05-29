@@ -11,7 +11,7 @@ from segmentation.livewire import *
 from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from slice_select.discreet_optimization import discreet_get_optimal_slice
-from slice_select.rotation_methods import rotate
+from slice_select.rotation_methods import rotate, image_rotate_1, image_rotate_back_1
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
 from pathlib import Path
@@ -111,7 +111,7 @@ def create_contours(viewer):
 
     if simulate_user_input:
         if iterations > 0:
-            rotated_ground_truth = image_rotate(ground_truth,normal)
+            rotated_ground_truth = image_rotate_1(ground_truth,normal)
             contours = auto_add_contours(rotated_ground_truth[point])
             # np.save("contours", contours)
             lw_layer = viewer.add_labels(contours, name='additional contours (automatic)', opacity=1.0)
@@ -181,9 +181,9 @@ def get_segmentation(viewer):
         seed_points = convert_to_labels(contours)
     else:
         new_labeled_slice = convert_to_labels2d(contours)
-        rotate_seed_points = image_rotate(seed_points,normal)
+        rotate_seed_points = image_rotate_1(seed_points,normal)
         rotate_seed_points[point] = new_labeled_slice
-        seed_points = image_rotate_back(rotate_seed_points,normal)
+        seed_points = image_rotate_back_1(rotate_seed_points,normal)
 
     segmentation, probabilities = segment(img, seed_points)
     viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))

@@ -41,8 +41,23 @@ def angle_between_vectors(vec1, vec2):
     angle_deg = math.degrees(angle_rad)
     return angle_deg
 
+def image_rotate_back_1(image, normal):
+    axis = np.array([1, 0, 0])
+    angle = angle_between_vectors(axis, normal)
+    if angle > 5:
+        rotated_image = rotate(image, axis, 360 - angle)
+    axis = np.array([0, 1, 0])
+    angle = angle_between_vectors(axis, normal)
+    if angle > 5:
+        rotated_image = rotate(rotated_image, axis, 360 - angle)
+    axis = np.array([0, 0, 1])
+    angle = angle_between_vectors(axis, normal)
+    if angle > 5:
+        rotated_image = rotate(rotated_image, axis, 360 - angle)
 
-def image_rotate(image, normal):
+    return rotated_image
+
+def image_rotate_1(image, normal):
     axis = np.array([1, 0, 0])
     angle = angle_between_vectors(axis)
     if angle > 5:
@@ -57,4 +72,5 @@ def image_rotate(image, normal):
         rotated_image = rotate(rotated_image, axis, angle)
 
     return rotated_image
+
 
