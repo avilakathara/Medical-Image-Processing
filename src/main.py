@@ -89,7 +89,7 @@ chosen_slice = None
 iterations = 0
 normal = None
 point = None
-
+axis = None
 
 def create_contours(viewer):
     global livewire
@@ -102,16 +102,22 @@ def create_contours(viewer):
     global ground_truth
     global iterations
     global fetched_plane_index
+    global axis
 
     if livewire is not None:
         contours = livewire.drawing
         livewire = None
         # np.save("contours", contours)
         return
-
     if simulate_user_input:
         if iterations > 0:
-            rotated_ground_truth = image_rotate_1(ground_truth,normal)
+            #rotated_ground_truth = image_rotate_1(ground_truth, normal)
+            if axis == "d1":
+                rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
+                viewer.add_image(rotated_ground_truth, name="rotated GT", colormap="gray", interpolation2d="bicubic")
+            else:
+                rotated_ground_truth = ground_truth
+
             contours = auto_add_contours(rotated_ground_truth[point])
             # np.save("contours", contours)
             lw_layer = viewer.add_labels(contours, name='additional contours (automatic)', opacity=1.0)
@@ -175,15 +181,25 @@ def get_segmentation(viewer):
     global seed_points
     global mypath
     global iterations
-
+    global contours
+    global normal
 
     if seed_points is None:
         seed_points = convert_to_labels(contours)
     else:
         new_labeled_slice = convert_to_labels2d(contours)
-        rotate_seed_points = image_rotate_1(seed_points,normal)
-        rotate_seed_points[point] = new_labeled_slice
-        seed_points = image_rotate_back_1(rotate_seed_points,normal)
+        if axis == "d1":
+            #rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
+            rotate_seed_points = rotate(seed_points, normal, 45)
+            rotate_seed_points[point] = new_labeled_slice
+            seed_points = rotate(rotate_seed_points, normal, 315)
+            viewer.add_labels(seed_points, name="seedpoints debug".format(iterations))
+        elif axis == "x":
+            seed_points[point] = new_labeled_slice
+        else:
+            rotate_seed_points = image_rotate_1(seed_points,normal)
+            rotate_seed_points[point] = new_labeled_slice
+            seed_points = image_rotate_back_1(rotate_seed_points,normal)
 
     segmentation, probabilities = segment(img, seed_points)
     viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
@@ -204,11 +220,11 @@ def user_check(viewer):
     global chosen_slice
     global normal
     global point
-
+    global axis
     # Find optimal slice
     # uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
-    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, True, True, True)
-
+    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, False, False)
+    axis = chosen_axis
 
     print("Iteration {} - MAX UNCERTAINTY at plane z = {}".format(iterations, point))
     print(point,normal,chosen_axis)
@@ -225,10 +241,10 @@ def user_check(viewer):
     elif chosen_axis == 'z' and discreet:
         chosen_slice = img[:, :, point]
     elif chosen_axis == "d1" and discreet:
-        image_unrotate = rotate(uncertainty, [0, 0, 1], 315)
+        image_unrotate = rotate(img, [0, 0, 1], 315)
         chosen_slice = image_unrotate[point]
 
-    # viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
+    viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
 
     # Save the chosen values here into a JSON for future use if needed
     # with open('data.json', 'r') as f:

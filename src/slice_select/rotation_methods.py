@@ -59,15 +59,15 @@ def image_rotate_back_1(image, normal):
 
 def image_rotate_1(image, normal):
     axis = np.array([1, 0, 0])
-    angle = angle_between_vectors(axis)
+    angle = angle_between_vectors(axis, normal)
     if angle > 5:
         rotated_image = rotate(image, axis, angle)
     axis = np.array([0, 1, 0])
-    angle = angle_between_vectors(axis)
+    angle = angle_between_vectors(axis, normal)
     if angle > 5:
         rotated_image = rotate(rotated_image, axis, angle)
     axis = np.array([0, 0, 1])
-    angle = angle_between_vectors(axis)
+    angle = angle_between_vectors(axis, normal)
     if angle > 5:
         rotated_image = rotate(rotated_image, axis, angle)
 
