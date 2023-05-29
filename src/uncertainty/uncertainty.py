@@ -3,6 +3,7 @@ import math
 import numpy as np
 import numpy.linalg as nl
 import scipy.ndimage as sn
+import scipy.stats as ss
 
 binary_labels = []
 
@@ -41,8 +42,7 @@ def calculate_uncertainty_fields(image, label, prob):
                         + "[" + ix + " ," + iy + ", " + iz + "].")
 
     # parameters for foreground & background distributions
-    # [(mean_0, std_0), (mean_1, std_1), ...]
-    # distributions = gaussian_foreground_background(image, label, ps)
+    mbg, sbg, mfg, sfg = gaussian_foreground_background(image, label)
 
     # distance maps (or transform)
     # (distance_from_0s, distance_from_1s)
@@ -56,16 +56,12 @@ def calculate_uncertainty_fields(image, label, prob):
     vec_boundary_e = np.vectorize(boundary_energy)
     vec_regional_e = np.vectorize(regional_energy)
 
-    # assert len(binary_labels) > 0
-    # assert len(distributions) > 0
-
     # calculate uncertainty for each voxel
     u_e = vec_entropy_e(prob_fg)
-    # u_r = vec_regional_e(image, binary_labels[ll],
-    #                      distributions[0][0], distributions[0][1], distributions[1][0], distributions[1][1])
     u_b = normalize_arr(vec_boundary_e(label, df0, df1, dx, dy, dz))
+    # u_r = normalize_arr(vec_regional_e(image, label, mbg, sbg, mfg, sfg))
 
-    output_field = u_b
+    output_field = 0.8 * u_e + 0.2 * u_b
 
     return output_field
 
@@ -82,29 +78,19 @@ def entropy_energy(prob):
 
 # --- REGIONAL ENERGY ---
 
-def regional_energy(intensity, bin_lab, bgm, bgs, fgm, fgs):
-    fg = gaussian_approx(intensity, fgm, fgs)
-    bg = gaussian_approx(intensity, bgm, bgs)
+def regional_energy(intensity, label, bgm, bgs, fgm, fgs):
+    fg = gaussian_density(intensity, fgm, fgs)
+    bg = gaussian_density(intensity, bgm, bgs)
 
-    if bin_lab:
-        return gaussian_approx(intensity, fgm, fgs) / (fg + bg)
-    return gaussian_approx(intensity, bgm, bgs) / (fg + bg)
+    if label == 1:
+        return gaussian_density(intensity, fgm, fgs) / (fg + bg)
+    return gaussian_density(intensity, bgm, bgs) / (fg + bg)
 
-def gaussian_foreground_background(image, label, n):
-    ix, iy, iz = image.shape
-    intensity_list = []
-    for i in range(n):
-        intensity_list.append([])
+def gaussian_foreground_background(image, label):
+    ibg = image[label == 0]
+    ifg = image[label == 1]
 
-    for x in range(ix):
-        for y in range(iy):
-            for z in range(iz):
-                intensity_list[label[x, y, z]].append(image[x, y, z])
-
-    output_list = []
-    for i in range(n):
-        output_list.append((np.mean(intensity_list[i]), np.std(intensity_list[i])))
-    return output_list
+    return np.mean(ibg), np.std(ibg), np.mean(ifg), np.std(ifg)
 
 def gaussian_density(x, mean, std):
     if x == 0:
@@ -114,12 +100,9 @@ def gaussian_density(x, mean, std):
     coef = 1 / (std * math.sqrt(2 * math.pi))
     return coef * math.pow(math.e, expo)
 
-def gaussian_approx(x, mean, std):
-    return 0.6 * (1 + math.cos((x - mean) / std)) / (std * math.pi)
-
 # --- BOUNDARY ENERGY ---
 
-def boundary_energy(label, df0, df1, dx, dy, dz, alpha=2):
+def boundary_energy(label, df0, df1, dx, dy, dz, alpha=1):
     coef = soft_delta_func(df1)
     if label == 1:
         coef = soft_delta_func(df0)
@@ -145,7 +128,7 @@ def get_distance_maps(label):
     label_inv = (~label.astype(bool)).astype(int)
     return sn.distance_transform_edt(label), sn.distance_transform_edt(label_inv)
 
-# ---
+# --- HELPER FUNCTIONS
 
 def normalize_arr(arr):
     min_val = np.min(arr)
