@@ -10,6 +10,7 @@ import cv2 as cv
 from segmentation.livewire import *
 from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
+from slice_select.discreet_optimization import discreet_get_optimal_slice
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
 from pathlib import Path
@@ -172,6 +173,7 @@ def get_segmentation(viewer):
     global iterations
     if seed_points is None:
         seed_points = convert_to_labels(contours)
+
     segmentation, probabilities = segment(img, seed_points)
     viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
 
@@ -190,10 +192,12 @@ def user_check(viewer):
     global iterations
 
     # Find optimal slice
-    uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
+    # uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
+    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, True, True, True)
+
 
     print("Iteration {} - MAX UNCERTAINTY at plane z = {}".format(iterations, point))
-
+    print(point,normal,chosen_axis)
     # load the slice as a special image with a name n
     # Get the image
     # img = viewer.layers['CT_SCAN'].data
@@ -205,14 +209,14 @@ def user_check(viewer):
     # viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
 
     # Save the chosen values here into a JSON for future use if needed
-    with open('data.json', 'r') as f:
-        loaded_data = json.load(f)
-    # Save info into json
-    loaded_data["chosen_point"] = point
-    loaded_data["chosen_normal"] = normal
-    loaded_data["chosen_axis"] = chosen_axis
-    with open('data.json', 'w') as f:
-        json.dump(loaded_data, f)
+    # with open('data.json', 'r') as f:
+    #     loaded_data = json.load(f)
+    # # Save info into json
+    # loaded_data["chosen_point"] = point
+    # loaded_data["chosen_normal"] = normal
+    # loaded_data["chosen_axis"] = chosen_axis
+    # with open('data.json', 'w') as f:
+    #     json.dump(loaded_data, f)
 
 
 # MAKE ANNOTATIONS
