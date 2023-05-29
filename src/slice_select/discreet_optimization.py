@@ -16,7 +16,7 @@ def discreet_get_optimal_slice(uncertainty, x_axis=False, y_axis=False, z_axis=F
     current_maximum_uncertainity = -1
     current_point = 0
     chosen_axis = "none"
-    show_plot = True
+    show_plot = False
 
     # Compute the rotated uncertainty fields here so the time isn't added to the choice part of the function
 

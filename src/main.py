@@ -11,7 +11,7 @@ from segmentation.livewire import *
 from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from slice_select.discreet_optimization import discreet_get_optimal_slice
-from slice_select.rotation_methods import rotate, image_rotate_1, image_rotate_back_1
+from slice_select.rotation_methods import rotate, image_rotate_1, image_rotate_back_1, true_img_rot, true_img_rot_back
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
 from pathlib import Path
@@ -103,6 +103,7 @@ def create_contours(viewer):
     global iterations
     global fetched_plane_index
     global axis
+    global normal
 
     if livewire is not None:
         contours = livewire.drawing
@@ -115,9 +116,13 @@ def create_contours(viewer):
             if axis == "d1":
                 rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
                 viewer.add_image(rotated_ground_truth, name="rotated GT", colormap="gray", interpolation2d="bicubic")
-            else:
+            elif axis == "x":
                 rotated_ground_truth = ground_truth
+            else:
+                rotated_ground_truth = true_img_rot(ground_truth, normal)
+                viewer.add_labels(rotated_ground_truth.astype(int), name="rotated GT")
 
+            print(rotated_ground_truth.shape)
             contours = auto_add_contours(rotated_ground_truth[point])
             # np.save("contours", contours)
             lw_layer = viewer.add_labels(contours, name='additional contours (automatic)', opacity=1.0)
@@ -197,9 +202,9 @@ def get_segmentation(viewer):
         elif axis == "x":
             seed_points[point] = new_labeled_slice
         else:
-            rotate_seed_points = image_rotate_1(seed_points,normal)
+            rotate_seed_points = true_img_rot(seed_points,normal)
             rotate_seed_points[point] = new_labeled_slice
-            seed_points = image_rotate_back_1(rotate_seed_points,normal)
+            seed_points = true_img_rot_back(rotate_seed_points,normal)
 
     segmentation, probabilities = segment(img, seed_points)
     viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
@@ -221,9 +226,10 @@ def user_check(viewer):
     global normal
     global point
     global axis
+
     # Find optimal slice
     # uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
-    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, False, False)
+    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, False, True, False)
     axis = chosen_axis
 
     print("Iteration {} - MAX UNCERTAINTY at plane z = {}".format(iterations, point))
@@ -241,7 +247,7 @@ def user_check(viewer):
     elif chosen_axis == 'z' and discreet:
         chosen_slice = img[:, :, point]
     elif chosen_axis == "d1" and discreet:
-        image_unrotate = rotate(img, [0, 0, 1], 315)
+        image_unrotate = true_img_rot(img, [0, 0, 1])
         chosen_slice = image_unrotate[point]
 
     viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
@@ -272,9 +278,9 @@ def on_press_a(viewer):
 @viewer.bind_key('z')
 def test(viewer):
     global img
-    roti = rot(img, [0,0,1], 45)
+    roti = true_img_rot(img, [0,0,1])
     viewer.add_image(roti, name="rotated 45", colormap="gray", interpolation2d="bicubic")
-    roti = rot(img, [0, 0, 1], 315)
+    roti = true_img_rot_back(roti, [0, 0, 1])
     viewer.add_image(roti, name="rotated -45", colormap="gray", interpolation2d="bicubic")
 
 
