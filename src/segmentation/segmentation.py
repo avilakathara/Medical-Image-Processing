@@ -29,7 +29,11 @@ def convert_to_labels(drawn_contours):
     drawn_contours = drawn_contours.astype(int)
 
     for index,slice in enumerate(drawn_contours):
-        drawn_contours[index] = convert_to_labels2d(slice)
+        # is this cheating?
+        if index == 0 or index == len(drawn_contours)-1:
+            drawn_contours[index] = np.ones(drawn_contours[0].shape)*2
+        else:
+            drawn_contours[index] = convert_to_labels2d(slice)
     return drawn_contours
 
 
