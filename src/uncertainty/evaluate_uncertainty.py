@@ -36,4 +36,4 @@ def false_negative(gt, s, uf):
 
 def produce_output(t, arr):
     arr = arr[arr.nonzero()]
-    return t + ': ' + str(100 * round(np.mean(arr), 3)) + '%'
+    return t + ': ' + "{:.2f}".format(100*np.mean(arr)) + '%'

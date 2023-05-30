@@ -61,7 +61,7 @@ def calculate_uncertainty_fields(image, label, prob):
     u_b = normalize_arr(vec_boundary_e(label, df0, df1, dx, dy, dz))
     # u_r = normalize_arr(vec_regional_e(image, label, mbg, sbg, mfg, sfg))
 
-    output_field = 0.8 * u_e + 0.2 * u_b
+    output_field = u_e
 
     return output_field
 
