@@ -5,6 +5,7 @@ def evaluate_uncertainty(ground_truth, segmentation, uncertainty_field):
     gt = ground_truth
     s = segmentation
     uf = uncertainty_field
+    # uf[uf < 0.2] = 0
 
     vtp = np.vectorize(true_positive)
     vtn = np.vectorize(true_negative)

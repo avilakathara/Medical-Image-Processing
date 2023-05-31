@@ -44,7 +44,8 @@ def calculate_uncertainty_fields(image, label, prob):
                         + "[" + ix + " ," + iy + ", " + iz + "].")
 
     # parameters for foreground & background distributions
-    mall, sall, mfg, sfg, ratio = gaussian_foreground_background(image, label)
+    normalized_img = normalize_arr(image)
+    mall, sall, mfg, sfg, ratio = gaussian_foreground_background(normalized_img, label)
 
     # distance maps (or transform)
     # (distance_from_0s, distance_from_1s)
@@ -57,13 +58,14 @@ def calculate_uncertainty_fields(image, label, prob):
     vec_entropy_e = np.vectorize(entropy_energy)
     vec_boundary_e = np.vectorize(boundary_energy)
     vec_regional_e = np.vectorize(regional_energy)
+    vec_curve = np.vectorize(curve)
 
     # calculate uncertainty for each voxel
     u_e = vec_entropy_e(prob_fg)
-    u_b = normalize_arr(vec_boundary_e(label, df0, df1, dx, dy, dz))
-    u_r = normalize_arr(vec_regional_e(image, label, mall, sall, mfg, sfg, ratio))
+    u_b = vec_curve(normalize_arr(vec_boundary_e(label, df0, df1, dx, dy, dz)), 2)
+    u_r = vec_curve(normalize_arr(vec_regional_e(normalized_img, mall, sall, mfg, sfg, ratio)), 4)
 
-    output_field = u_r
+    output_field = 0.8 * u_e + 0.05 * u_b + 0.15 * u_r
 
     return output_field
 
@@ -80,11 +82,14 @@ def entropy_energy(prob):
 
 # --- REGIONAL ENERGY ---
 
-def regional_energy(intensity, label, allm, alls, fgm, fgs, ratio):
+def regional_energy(intensity, allm, alls, fgm, fgs, ratio):
     fg = gaussian_density(intensity, fgm, fgs)
-    all = gaussian_density(intensity, allm, alls)
+    dens = gaussian_density(intensity, allm, alls)
 
-    return fg * ratio / all
+    try:
+        return fg * ratio / dens
+    except:
+        return 0
 
 def gaussian_foreground_background(image, label):
     intensities_all = image.flatten()
@@ -107,7 +112,7 @@ def gaussian_density(x, mean, std):
 
 # --- BOUNDARY ENERGY ---
 
-def boundary_energy(label, df0, df1, dx, dy, dz, alpha=1):
+def boundary_energy(label, df0, df1, dx, dy, dz, alpha=0.5):
     coef = soft_delta_func(df1)
     if label == 1:
         coef = soft_delta_func(df0)
@@ -140,3 +145,6 @@ def normalize_arr(arr):
     max_val = np.max(arr)
     normalized_arr = (arr - min_val) / (max_val - min_val)
     return normalized_arr
+
+def curve(arr, strength=2):
+    return 1 - math.pow(arr - 1, 2 * strength)
