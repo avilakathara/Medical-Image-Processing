@@ -53,7 +53,7 @@ x = np.any(ground_truth, axis=(0, 1))
 zmin, zmax = np.where(z)[0][[0, -1]]
 ymin, ymax = np.where(y)[0][[0, -1]]
 xmin, xmax = np.where(x)[0][[0, -1]]
-z_offset = 2
+z_offset = 1
 xy_offset = 10
 zmin = max(0, zmin - z_offset)
 ymin = max(0, ymin - xy_offset)

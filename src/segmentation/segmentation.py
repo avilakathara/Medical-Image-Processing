@@ -25,11 +25,9 @@ now = datetime.now()
 
 import pyamg
 
-def convert_to_labels(drawn_contours):
+def convert_to_labels(drawn_contours, z_bound_down=-1, z_bound_up=-1):
     drawn_contours = drawn_contours.astype(int)
-
     for index,slice in enumerate(drawn_contours):
-        # is this cheating?
         if index == 0 or index == len(drawn_contours)-1:
             drawn_contours[index] = np.ones(drawn_contours[0].shape)*2
         else:
@@ -93,6 +91,7 @@ def convert_to_labels2d(slice):
 
 
 def segment(image, seed_points):
+    print(seed_points.shape, "= shape van seedpoints")
     seed_points = seed_points.astype(int)
     start_time = time.time()
     prob = random_walker(image, seed_points.astype(int), beta=0.1, mode='cg_j',tol=0.001, copy=False, return_full_prob=True)

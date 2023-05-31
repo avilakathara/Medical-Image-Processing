@@ -53,7 +53,7 @@ x = np.any(ground_truth, axis=(0, 1))
 zmin, zmax = np.where(z)[0][[0, -1]]
 ymin, ymax = np.where(y)[0][[0, -1]]
 xmin, xmax = np.where(x)[0][[0, -1]]
-z_offset = 2
+z_offset = 1
 xy_offset = 10
 zmin = max(0, zmin - z_offset)
 ymin = max(0, ymin - xy_offset)
@@ -123,7 +123,7 @@ def create_contours(viewer):
                 viewer.add_labels(rotated_ground_truth.astype(int), name="rotated GT")
 
             print(rotated_ground_truth.shape)
-            contours = auto_add_contours(rotated_ground_truth[point])
+            contours = create_contour(rotated_ground_truth[point])
             # np.save("contours", contours)
             lw_layer = viewer.add_labels(contours, name='additional contours (automatic)', opacity=1.0)
         else:

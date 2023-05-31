@@ -147,35 +147,15 @@ def flatten_indices(indices,size_x):
 
 
 def automatic_contours(ground_truth):
-    skips = 5
-    slice = 0
-    ground_truth[ground_truth!=0] = 1
-    seed_points = np.zeros(ground_truth.shape,dtype=bool)
-    while slice < len(ground_truth):
-        if np.count_nonzero(ground_truth[slice]) == 0:
-            slice += 1
-        else:
-            im = ground_truth[slice].astype(np.uint8)
-            contours, hierarchy = cv.findContours(im, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
-            for contour in contours:
-                for point in contour:
-                    seed_points[slice,point[0][1],point[0][0]] = True
-
-            slice += skips
-    return seed_points
-
-def auto_add_contours(ground_truth):
-    ground_truth[ground_truth!=0] = 1
-    # segmentation[segmentation!=0] = 1
-    # diff = ground_truth - segmentation
-    # diff[diff==-1] = 0
-
-    # seed_points = original
     result = np.zeros(ground_truth.shape,dtype=bool)
+    target = int(len(ground_truth)/2)
+    result[target] = create_contour(ground_truth[target])
+    return result
 
-    # if np.count_nonzero(diff[slice]) == 0:
-    #     return seed_points
-
+def create_contour(ground_truth):
+    if np.count_nonzero(ground_truth) == 0:
+        return ground_truth
+    result = np.zeros(ground_truth.shape,dtype=bool)
     im = ground_truth.astype(np.uint8)
     contours, hierarchy = cv.findContours(im, cv.RETR_TREE, cv.CHAIN_APPROX_NONE)
     for contour in contours:
