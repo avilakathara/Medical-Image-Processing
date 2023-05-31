@@ -10,7 +10,7 @@ import napari
 # from qtpy.QtWidgets import QSlider
 from pathlib import Path
 # from matplotlib.patches import Rectangle
-from napari.settings import SETTINGS
+# from napari.settings import SETTINGS
 import numpy as np
 import _pyift
 import collections

@@ -5,6 +5,8 @@ import numpy.linalg as nl
 import scipy.ndimage as sn
 import scipy.stats as ss
 
+from src.uncertainty.max_likelihood_estimate import max_likelihood_estimate
+
 binary_labels = []
 
 def calculate_uncertainty_fields(image, label, prob):
@@ -42,7 +44,7 @@ def calculate_uncertainty_fields(image, label, prob):
                         + "[" + ix + " ," + iy + ", " + iz + "].")
 
     # parameters for foreground & background distributions
-    mbg, sbg, mfg, sfg = gaussian_foreground_background(image, label)
+    mall, sall, mfg, sfg, ratio = gaussian_foreground_background(image, label)
 
     # distance maps (or transform)
     # (distance_from_0s, distance_from_1s)
@@ -59,9 +61,9 @@ def calculate_uncertainty_fields(image, label, prob):
     # calculate uncertainty for each voxel
     u_e = vec_entropy_e(prob_fg)
     u_b = normalize_arr(vec_boundary_e(label, df0, df1, dx, dy, dz))
-    # u_r = normalize_arr(vec_regional_e(image, label, mbg, sbg, mfg, sfg))
+    u_r = normalize_arr(vec_regional_e(image, label, mall, sall, mfg, sfg, ratio))
 
-    output_field = u_e
+    output_field = u_r
 
     return output_field
 
@@ -78,19 +80,22 @@ def entropy_energy(prob):
 
 # --- REGIONAL ENERGY ---
 
-def regional_energy(intensity, label, bgm, bgs, fgm, fgs):
+def regional_energy(intensity, label, allm, alls, fgm, fgs, ratio):
     fg = gaussian_density(intensity, fgm, fgs)
-    bg = gaussian_density(intensity, bgm, bgs)
+    all = gaussian_density(intensity, allm, alls)
 
-    if label == 1:
-        return gaussian_density(intensity, fgm, fgs) / (fg + bg)
-    return gaussian_density(intensity, bgm, bgs) / (fg + bg)
+    return fg * ratio / all
 
 def gaussian_foreground_background(image, label):
-    ibg = image[label == 0]
-    ifg = image[label == 1]
+    intensities_all = image.flatten()
+    intensities_fg = image[label == 1]
 
-    return np.mean(ibg), np.std(ibg), np.mean(ifg), np.std(ifg)
+    allm, alls = max_likelihood_estimate(intensities_all)
+    fgm, fgs = max_likelihood_estimate(intensities_fg)
+
+    ratio = len(intensities_fg) / len(intensities_all)
+
+    return allm, alls, fgm, fgs, ratio
 
 def gaussian_density(x, mean, std):
     if x == 0:
