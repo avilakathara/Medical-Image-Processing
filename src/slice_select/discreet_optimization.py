@@ -13,6 +13,8 @@ from slice_select.rotation_methods import rotate
 def discreet_get_optimal_slice(uncertainty, x_axis=False, y_axis=False, z_axis=False, diagonal_1=False,
                       diagonal_2=False, diagonal_3=False, diagonal_4=False, diagonal_5=False,
                       diagonal_6=False):
+    print("Fetching most uncertain slice...")
+
     current_maximum_uncertainity = -1
     current_point = 0
     chosen_axis = "none"
@@ -35,7 +37,7 @@ def discreet_get_optimal_slice(uncertainty, x_axis=False, y_axis=False, z_axis=F
 
     #gradients = get_gradients(uncertainty)
     gradients = np.array([uncertainty, uncertainty, uncertainty])
-    print("gradients shape is {}".format(gradients.shape))
+    # print("gradients shape is {}".format(gradients.shape))
 
     if x_axis:
         sum_x, point = find_maximal_x(gradients, show_plot)

@@ -1,29 +1,16 @@
-from pathlib import Path
+
+import numpy as np
+import time
+import math
+import cv2 as cv
+
 from skimage.segmentation import random_walker
 from skimage.segmentation import flood
-# from skimage.segmentation import expand_labels
-# from skimage.morphology import ball
 from skimage.morphology import binary_dilation
-# from skimage.morphology import binary_erosion
-# from skimage.morphology import binary_opening
-
-# from skimage.morphology import binary_closing
-# from skimage.morphology import area_closing
-# from skimage.filters import gaussian
-import numpy as np
-# import matplotlib.pyplot as plt
-import time
-import cv2 as cv
 from scipy.ndimage import affine_transform
 from datetime import datetime
+
 now = datetime.now()
-
-# FOR THE REST OF THE GROUP:
-# conda install -c anaconda pyamg
-# pip install chardet
-
-
-import pyamg
 
 def convert_to_labels(drawn_contours, z_bound_down=-1, z_bound_up=-1):
     drawn_contours = drawn_contours.astype(int)
@@ -91,11 +78,11 @@ def convert_to_labels2d(slice):
 
 
 def segment(image, seed_points):
-    print(seed_points.shape, "= shape van seedpoints")
+    print("Generating segment...")
     seed_points = seed_points.astype(int)
     start_time = time.time()
     prob = random_walker(image, seed_points.astype(int), beta=0.1, mode='cg_j',tol=0.001, copy=False, return_full_prob=True)
-    print(time.time() - start_time, "seconds")
+    # print(time.time() - start_time, "seconds")
 
     labels = np.zeros(image.shape).astype(int)
     labels[prob[0]>=0.5] = 1
