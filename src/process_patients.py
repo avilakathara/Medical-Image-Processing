@@ -2,6 +2,9 @@ from pathlib import Path
 import numpy as np
 import SimpleITK as sitk
 
+import tkinter as tk
+from tkinter import filedialog
+
 labels_to_ids = {
     "Background": 0,
     "BrainStem": 1,
@@ -60,6 +63,23 @@ def convert_to_numpy(source_dir, destination_dir, subset=None):
 
     print("Finished conversion of MICCAI dataset to numpy arrays")
 
+
+# PROMPT TO SELECT FILE
+window = tk.Tk()
+window.withdraw()
+dir_from = filedialog.askdirectory()
+window.destroy()
+
+window = tk.Tk()
+window.withdraw()
+dir_to = filedialog.askdirectory()
+window.destroy()
+
+print(dir_from)
+print(dir_to)
+
+convert_to_numpy(dir_from, dir_to)
+
 #D:\RP\RPData
-#convert_to_numpy("/Users/chadepl/data/HCAI/MICCAI", "/Users/chadepl/Downloads/tmp_miccai", subset=['0522c0708', '0522c0195', '0522c0479'])
+# convert_to_numpy(dir_from, dir_to, subset=['0522c0708', '0522c0195', '0522c0479'])
 #convert_to_numpy("D:/RP/RPData" , "D:/RP/UsedData", subset=['0522c0708', '0522c0195', '0522c0479'])
