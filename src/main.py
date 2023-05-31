@@ -12,6 +12,7 @@ from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from slice_select.discreet_optimization import discreet_get_optimal_slice
 from slice_select.rotation_methods import rotate, image_rotate_1, image_rotate_back_1, true_img_rot, true_img_rot_back
+from src.uncertainty.evaluate_uncertainty import evaluate_uncertainty
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
 from pathlib import Path
@@ -288,6 +289,9 @@ def test(viewer):
 @viewer.bind_key('s')
 def on_press_s(viewer):
     global iterations
+    global ground_truth
+    global segmentation
+    global uncertainty_field
     iterations += 1
     get_segmentation(viewer)
     get_uncertainty_field(viewer)

@@ -11,7 +11,7 @@ from skimage.morphology import binary_dilation
 # from skimage.morphology import area_closing
 # from skimage.filters import gaussian
 import numpy as np
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import time
 import cv2 as cv
 from scipy.ndimage import affine_transform
