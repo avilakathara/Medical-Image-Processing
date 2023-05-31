@@ -230,7 +230,7 @@ def user_check(viewer):
 
     # Find optimal slice
     # uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
-    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, False, True, False)
+    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, False, False)
     axis = chosen_axis
 
     print("Iteration {} - MAX UNCERTAINTY at plane z = {}".format(iterations, point))
