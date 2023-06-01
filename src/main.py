@@ -227,6 +227,7 @@ def on_press_s(viewer):
     iterations += 1
     get_segmentation(viewer)
     get_uncertainty_field(viewer)
+    # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
     user_check(viewer)
 
 

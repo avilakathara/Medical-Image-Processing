@@ -45,7 +45,7 @@ def calculate_uncertainty_fields(image, label, prob):
 
     # parameters for foreground & background distributions
     normalized_img = normalize_arr(image)
-    mall, sall, mfg, sfg, ratio = gaussian_foreground_background(normalized_img, label)
+    mbg, sbg, mfg, sfg = gaussian_foreground_background(image, label)
 
     # distance maps (or transform)
     # (distance_from_0s, distance_from_1s)
@@ -63,7 +63,7 @@ def calculate_uncertainty_fields(image, label, prob):
     # calculate uncertainty for each voxel
     u_e = vec_entropy_e(prob_fg)
     u_b = vec_curve(normalize_arr(vec_boundary_e(label, df0, df1, dx, dy, dz)), 2)
-    u_r = vec_curve(normalize_arr(vec_regional_e(normalized_img, mall, sall, mfg, sfg, ratio)), 4)
+    u_r = normalize_arr(vec_regional_e(image, label, mbg, sbg, mfg, sfg))
 
     output_field = 0.8 * u_e + 0.05 * u_b + 0.15 * u_r
 
@@ -82,25 +82,23 @@ def entropy_energy(prob):
 
 # --- REGIONAL ENERGY ---
 
-def regional_energy(intensity, allm, alls, fgm, fgs, ratio):
+def regional_energy(intensity, label, bgm, bgs, fgm, fgs):
     fg = gaussian_density(intensity, fgm, fgs)
-    dens = gaussian_density(intensity, allm, alls)
+    bg = gaussian_density(intensity, bgm, bgs)
 
     try:
-        return fg * ratio / dens
+        return fg / (fg + bg)
     except:
         return 0
 
 def gaussian_foreground_background(image, label):
-    intensities_all = image.flatten()
+    intensities_bg = image[label == 0]
     intensities_fg = image[label == 1]
 
-    allm, alls = max_likelihood_estimate(intensities_all)
+    bgm, bgs = max_likelihood_estimate(intensities_bg)
     fgm, fgs = max_likelihood_estimate(intensities_fg)
 
-    ratio = len(intensities_fg) / len(intensities_all)
-
-    return allm, alls, fgm, fgs, ratio
+    return bgm, bgs, fgm, fgs
 
 def gaussian_density(x, mean, std):
     if x == 0:
