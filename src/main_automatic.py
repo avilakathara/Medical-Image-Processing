@@ -7,7 +7,6 @@ from tkinter import filedialog
 from qtpy.QtWidgets import QMessageBox
 import cv2 as cv
 
-from segmentation.livewire import *
 from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from slice_select.discreet_optimization import discreet_get_optimal_slice

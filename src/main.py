@@ -7,12 +7,11 @@ from tkinter import filedialog
 from qtpy.QtWidgets import QMessageBox
 import cv2 as cv
 
-from segmentation.livewire import *
 from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from slice_select.discreet_optimization import discreet_get_optimal_slice
 from slice_select.rotation_methods import rotate, image_rotate_1, image_rotate_back_1, true_img_rot, true_img_rot_back
-from src.uncertainty.evaluate_uncertainty import evaluate_uncertainty
+from uncertainty.evaluate_uncertainty import evaluate_uncertainty
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
 from pathlib import Path
@@ -63,8 +62,6 @@ viewer.add_image(img, name="CT_SCAN", colormap="gray", interpolation2d="bicubic"
 segmentation = None
 probabilities = None
 uncertainty_field = None
-livewire = None
-click_count = 0
 contours = None
 seed_points = None
 lw_layer = None
@@ -79,8 +76,6 @@ chosen_layer = None
 
 
 def create_contours(viewer):
-    global livewire
-    global click_count
     global seed_points
     global contours
     global lw_layer
@@ -261,6 +256,29 @@ def on_press_s(viewer):
     # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
     user_check(viewer)
 
+
+# TODO: uncomment this code and use it to automate main, and delete key bindings
+# user_interaction = 0
+# diff_score = 1.0
+# threshold = 0.005
+# while(diff_score > threshold):
+#     user_interaction += 1
+#     create_contours()
+#     iterations += 1
+#     get_segmentation()
+#     get_uncertainty_field()
+#     user_check()
+#
+#     diff_score = np.sum(abs(segmentation-ground_truth))/np.product(segmentation.shape)
+#     print(diff_score)
+#
+#     # TODO: make sure slice is not already annotated, this could happen when the threshold is never reached
+#
+#
+# viewer.add_labels(segmentation.astype(int),name="final segmentation")
+# viewer.add_labels(ground_truth.astype(int),name="ground truth")
+#
+# print(user_interaction)
 
 # INITIATE
 napari.run()

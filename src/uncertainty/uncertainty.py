@@ -5,7 +5,7 @@ import numpy.linalg as nl
 import scipy.ndimage as sn
 import scipy.stats as ss
 
-from src.uncertainty.max_likelihood_estimate import max_likelihood_estimate
+from uncertainty.max_likelihood_estimate import max_likelihood_estimate
 
 binary_labels = []
 
