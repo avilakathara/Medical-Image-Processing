@@ -75,6 +75,14 @@ axis = None
 chosen_layer = None
 
 
+sim = 1
+
+def dice_coefficient(mask1, mask2):
+    intersection = np.sum(mask1 * mask2)
+    total = np.sum(mask1) + np.sum(mask2)
+    dice = (2.0 * intersection) / total
+    return dice
+
 def create_contours(viewer):
     global seed_points
     global contours
@@ -106,16 +114,23 @@ def create_contours(viewer):
         elif axis == "z":
             contours = create_contour(ground_truth[:, :, point])
         else:
+            ground_truth, pad, shape = true_img_rot(ground_truth, normal)
+            print("shape of gt is {}".format(ground_truth.shape))
             contours = create_contour(ground_truth[point])
+            ground_truth = true_img_rot_back(ground_truth, normal, pad, shape)
         contours_display = np.full(ground_truth.shape, False)
         if axis == "x":
             contours_display[point] = contours
+            contours_display, pad, shape = true_img_rot(contours_display, normal)
+            contours_display = true_img_rot_back(contours_display, normal, pad, shape)
         elif axis == "y":
             contours_display[:, point, :] = contours
         elif axis == "z":
             contours_display[:, :, point] = contours
         else:
-            contours_display[point] = contours
+            contours_display, pad, shape = true_img_rot(contours_display, normal)
+            # contours_display[point] = contours
+            # contours_display = true_img_rot_back(contours_display, normal, pad, shape)
         # np.save("contours", contours)
         lw_layer = viewer.add_labels(contours_display, name='INPUT {}'.format(iterations), opacity=1.0)
     else:
@@ -138,13 +153,13 @@ def get_segmentation(viewer):
         seed_points = convert_to_labels(contours)
     else:
         new_labeled_slice = convert_to_labels2d(contours)
-        if axis == "d1":
-            # rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
-            rotate_seed_points = rotate(seed_points, normal, 45)
-            rotate_seed_points[point] = new_labeled_slice
-            seed_points = rotate(rotate_seed_points, normal, 315)
-            viewer.add_labels(seed_points, name="seedpoints debug".format(iterations))
-        elif axis == "x":
+        # if axis == "d1":
+        #     # rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
+        #     rotate_seed_points = rotate(seed_points, normal, 45)
+        #     rotate_seed_points[point] = new_labeled_slice
+        #     seed_points = rotate(rotate_seed_points, normal, 315)
+        #     viewer.add_labels(seed_points, name="seedpoints debug".format(iterations))
+        if axis == "x":
             print(seed_points.shape)
             seed_points[point] = new_labeled_slice
         elif axis == "y":
@@ -152,13 +167,13 @@ def get_segmentation(viewer):
         elif axis == "z":
             seed_points[:, :, point] = new_labeled_slice
         else:
-            rotate_seed_points = true_img_rot(seed_points, normal)
+            rotate_seed_points, pad, shape = true_img_rot(seed_points, normal)
             rotate_seed_points[point] = new_labeled_slice
-            seed_points = true_img_rot_back(rotate_seed_points, normal)
+            seed_points = true_img_rot_back(rotate_seed_points, normal, pad, shape)
 
     segmentation, probabilities = segment(img, seed_points)
     seg_layer = viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
-
+    print("Dice coeff is: {}".format(dice_coefficient(segmentation, ground_truth)))
 
 def get_uncertainty_field(viewer, draw=False):
     global uncertainty_field
@@ -180,7 +195,7 @@ def user_check(viewer, discrete=True):
 
     # Find optimal slice
     # uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
-    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, True, True)
+    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, False, False, False, True)
     axis = chosen_axis
 
     print("Iteration {} - MAX UNCERTAINTY at plane {} = {}".format(iterations, chosen_axis, point))
@@ -192,8 +207,8 @@ def user_check(viewer, discrete=True):
     elif chosen_axis == 'z' and discrete:
         chosen_slice = img[:, :, point]
     elif chosen_axis == "d1" and discrete:
-        image_unrotate = true_img_rot(img, [0, 0, 1])
-        chosen_slice = image_unrotate[point]
+        image_rot, pad, shape = true_img_rot(img, normal)
+        chosen_slice = image_rot[point]
 
     chosen_layer = viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
 
@@ -220,10 +235,12 @@ def on_press_a(viewer):
 @viewer.bind_key('z')
 def test(viewer):
     global img
-    roti = true_img_rot(img, [0, 0, 1])
+    roti, pad, shape = true_img_rot(img, [0, 0, 1])
     viewer.add_image(roti, name="rotated 45", colormap="gray", interpolation2d="bicubic")
-    roti = true_img_rot_back(roti, [0, 0, 1])
-    viewer.add_image(roti, name="rotated -45", colormap="gray", interpolation2d="bicubic")
+    roti = true_img_rot_back(roti, [0, 0, 1], pad, shape)
+    viewer.add_image(roti, name="unrotated 45", colormap="gray", interpolation2d="bicubic")
+    # roti = true_img_rot_back(roti, [0, 0, 1])
+    # viewer.add_image(roti, name="rotated -45", colormap="gray", interpolation2d="bicubic")
 
 
 # MAKE SEGMENTATION
@@ -282,3 +299,30 @@ def on_press_s(viewer):
 
 # INITIATE
 napari.run()
+
+while(sim > 0):
+    try:
+        viewer.layers.remove(lw_layer)
+    except:
+        pass
+    create_contours(viewer)
+    try:
+        viewer.layers.remove(lw_layer)
+    except:
+        pass
+    try:
+        viewer.layers.remove(seg_layer)
+    except:
+        pass
+    try:
+        viewer.layer.remove(chosen_layer)
+    except:
+        pass
+
+    iterations += 1
+    get_segmentation(viewer)
+    get_uncertainty_field(viewer)
+    # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
+    user_check(viewer)
+
+    sim -= 1

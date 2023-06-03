@@ -22,11 +22,24 @@ def pad_image(image):
     # Pad the image array using the smallest value as the constant
     padded_image = np.pad(image, pad_widths, mode='constant', constant_values=min_value)
 
-    return padded_image
+    padding_widths = pad_widths
+    original_shape = current_shape
 
+    return padded_image, pad_widths, original_shape
+
+def unpad_image(padded_image, pad_widths, original_shape):
+    # Calculate the indices for unpadding
+    unpad_indices = []
+    for i in range(len(original_shape)):
+        pad_width = pad_widths[i]
+        unpad_indices.append(slice(pad_width[0], -pad_width[1] or None))
+
+    # Unpad the image array using the calculated indices
+    unpadded_image = padded_image[(*unpad_indices, ...)]
+
+    return unpadded_image
 
 def rotate(image, axis, angle_deg, cval=0.0):
-    image = pad_image(image)
     min_value = np.min(image)
     # Define the rotation axis and angle
     axis = np.array(axis)  # Example: Rotate around the X-axis
@@ -143,6 +156,8 @@ def remove_padding(padded_image, pad_length):
 
 
 def true_img_rot(image, normal):
+    #print(image.shape)
+    image, pad_width, original_shape = pad_image(image)
     print(image.shape)
     x, y, z = image.shape
     m = min(x, min(y, z))
@@ -151,6 +166,7 @@ def true_img_rot(image, normal):
     rotations = find_rotation(normal)
     true_rotations = np.degrees(rotations)
     rotations = abs(true_rotations)
+    #print(true_rotations)
     rotim = image
     if rotations[0] > 0:
         rotim = rotate(rotim, [1, 0, 0], get_val(true_rotations[0]), cval=0.0)
@@ -160,17 +176,17 @@ def true_img_rot(image, normal):
         rotim = rotate(rotim, [0, 0, 1], get_val(true_rotations[2]), cval=0.0)
 
     #rotim = remove_padding(rotim, m)
-    return rotim
+    return rotim, pad_width, original_shape
 
 
-def true_img_rot_back(image, normal):
+def true_img_rot_back(image, normal, pad_width, original_shape):
     x, y, z = image.shape
     m = min(x, min(y, z))
     #image = add_padding(image, m)
     normal = np.array(normal).astype(float)
     rotations = find_rotation(normal)
     true_rotations = -1 * np.degrees(rotations)
-    print(true_rotations)
+    #print(true_rotations)
     rotations = abs(true_rotations)
     rotim = image
     if rotations[0] > 0:
@@ -179,8 +195,10 @@ def true_img_rot_back(image, normal):
         rotim = rotate(rotim, [0, 1, 0], get_val(true_rotations[1]), cval=0.0)
     if rotations[2] > 0:
         rotim = rotate(rotim, [0, 0, 1], get_val(true_rotations[2]), cval=0.0)
-
     #rotim = remove_padding(rotim, m)
+    #print(original_shape)
+    rotim = unpad_image(rotim, pad_width, original_shape)
+    #print(rotim.shape)
     return rotim
 
 # # Example usage

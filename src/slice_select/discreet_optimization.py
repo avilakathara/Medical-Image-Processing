@@ -4,15 +4,16 @@ import numpy as np
 import cv2 as cv2
 import matplotlib.pyplot as plt
 
-
 # from scipy import ndimage
 # from scipy.ndimage import rotate
 from slice_select.rotation_methods import rotate
 
+from src.slice_select.rotation_methods import true_img_rot
+
 
 def discreet_get_optimal_slice(uncertainty, x_axis=False, y_axis=False, z_axis=False, diagonal_1=False,
-                      diagonal_2=False, diagonal_3=False, diagonal_4=False, diagonal_5=False,
-                      diagonal_6=False):
+                               diagonal_2=False, diagonal_3=False, diagonal_4=False, diagonal_5=False,
+                               diagonal_6=False):
     print("Fetching most uncertain slice...")
 
     current_maximum_uncertainity = -1
@@ -23,9 +24,10 @@ def discreet_get_optimal_slice(uncertainty, x_axis=False, y_axis=False, z_axis=F
     # Compute the rotated uncertainty fields here so the time isn't added to the choice part of the function
 
     # Rotate around z axis by 45 degrees.
-    d1_rotation = rotate(uncertainty, [0,0,1], 45)
+    # d1_rotation = rotate(uncertainty, [0,0,1], 45)
+    d1_rotation, _, _ = true_img_rot(uncertainty, [0.707, 0.707, 0])
     # Rotate around z axis by -45 degrees.
-    d2_rotation = rotate(uncertainty, [0,0,1], 315)
+    d2_rotation = rotate(uncertainty, [0, 0, 1], 315)
     # Rotate around y axis by 45 degrees.
     d3_rotation = rotate(uncertainty, [0, 1, 0], 45)
     # Rotate around y axis by -45 degrees.
@@ -35,7 +37,7 @@ def discreet_get_optimal_slice(uncertainty, x_axis=False, y_axis=False, z_axis=F
     # Rotate around x axis by -45 degrees.
     d6_rotation = rotate(uncertainty, [1, 0, 0], 315)
 
-    #gradients = get_gradients(uncertainty)
+    # gradients = get_gradients(uncertainty)
     gradients = np.array([uncertainty, uncertainty, uncertainty])
     # print("gradients shape is {}".format(gradients.shape))
 
@@ -58,7 +60,7 @@ def discreet_get_optimal_slice(uncertainty, x_axis=False, y_axis=False, z_axis=F
             chosen_axis = "z"
             current_point = point
     if diagonal_1:
-        sum_t, point = find_maximal_x(np.array([d5_rotation, d5_rotation, d5_rotation]), show_plot)
+        sum_t, point = find_maximal_x(np.array([d1_rotation, d1_rotation, d1_rotation]), show_plot)
         if sum_t > current_maximum_uncertainity:
             current_maximum_uncertainity = sum_t
             chosen_axis = "d1"
@@ -71,7 +73,7 @@ def discreet_get_optimal_slice(uncertainty, x_axis=False, y_axis=False, z_axis=F
     elif chosen_axis == "z":
         return current_maximum_uncertainity, current_point, np.array([0, 0, 1]), "z"
     elif chosen_axis == "d1":
-        return current_maximum_uncertainity, current_point, np.array([0, 0, 1]), "d1"
+        return current_maximum_uncertainity, current_point, np.array([0.707, 0.707, 0]), "d1"
     # uncertainty, point, normal, chosen_axis
 
 
