@@ -77,15 +77,14 @@ point = None
 axis = None
 chosen_layer = None
 
-sim = 1
 
+sim = 1
 
 def dice_coefficient(mask1, mask2):
     intersection = np.sum(mask1 * mask2)
     total = np.sum(mask1) + np.sum(mask2)
     dice = (2.0 * intersection) / total
     return dice
-
 
 def create_contours(viewer):
     global seed_points
@@ -121,7 +120,7 @@ def create_contours(viewer):
             gto = ground_truth
             ground_truth, pad, shape = true_img_rot(ground_truth, normal)
             contours = create_contour(ground_truth[point])
-            # ground_truth = true_img_rot_back(ground_truth, normal, pad, shape)
+            #ground_truth = true_img_rot_back(ground_truth, normal, pad, shape)
             ground_truth = gto
             print(np.min(ground_truth), np.max(ground_truth))
             contours[contours > 0.7] = 1.0
@@ -140,7 +139,7 @@ def create_contours(viewer):
             # contours_display[point] = contours
             # contours_display = true_img_rot_back(contours_display, normal, pad, shape)
         # np.save("contours", contours)
-        lw_layer = viewer.add_labels(contours_display.astype(int), name='INPUT {}'.format(iterations), opacity=1.0)
+        lw_layer = viewer.add_labels(contours_display, name='INPUT {}'.format(iterations), opacity=1.0)
     else:
         contours = automatic_contours(ground_truth)
         # np.save("contours", contours)
@@ -200,7 +199,6 @@ def get_segmentation(viewer):
     segmentation, probabilities = segment(img, seed_points)
     seg_layer = viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
     print("Dice coeff is: {}".format(dice_coefficient(segmentation, ground_truth)))
-
 
 def get_uncertainty_field(viewer, draw=False):
     global uncertainty_field
