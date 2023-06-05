@@ -77,14 +77,15 @@ point = None
 axis = None
 chosen_layer = None
 
-
 sim = 1
+
 
 def dice_coefficient(mask1, mask2):
     intersection = np.sum(mask1 * mask2)
     total = np.sum(mask1) + np.sum(mask2)
     dice = (2.0 * intersection) / total
     return dice
+
 
 def create_contours(viewer):
     global seed_points
@@ -120,7 +121,7 @@ def create_contours(viewer):
             gto = ground_truth
             ground_truth, pad, shape = true_img_rot(ground_truth, normal)
             contours = create_contour(ground_truth[point])
-            #ground_truth = true_img_rot_back(ground_truth, normal, pad, shape)
+            # ground_truth = true_img_rot_back(ground_truth, normal, pad, shape)
             ground_truth = gto
             print(np.min(ground_truth), np.max(ground_truth))
             contours[contours > 0.7] = 1.0
@@ -139,7 +140,7 @@ def create_contours(viewer):
             # contours_display[point] = contours
             # contours_display = true_img_rot_back(contours_display, normal, pad, shape)
         # np.save("contours", contours)
-        lw_layer = viewer.add_labels(contours_display, name='INPUT {}'.format(iterations), opacity=1.0)
+        lw_layer = viewer.add_labels(contours_display.astype(int), name='INPUT {}'.format(iterations), opacity=1.0)
     else:
         contours = automatic_contours(ground_truth)
         # np.save("contours", contours)
@@ -158,8 +159,10 @@ def get_segmentation(viewer):
 
     if seed_points is None:
         seed_points = convert_to_labels(contours)
+        seed_points[seed_points == 2] = 4
     else:
         new_labeled_slice = convert_to_labels2d(contours).astype(int)
+        new_labeled_slice[new_labeled_slice == 2] = 4
         # if axis == "d1":
         #     # rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
         #     rotate_seed_points = rotate(seed_points, normal, 45)
@@ -175,21 +178,29 @@ def get_segmentation(viewer):
             seed_points[:, :, point] = new_labeled_slice
         else:
             spo = seed_points
-            viewer.add_labels(seed_points,name='seed points')
-            rotate_seed_points, pad, shape = true_img_rot(seed_points, normal)
+            viewer.add_labels(seed_points, name='seed points')
+            rotate_seed_points, pad, shape = true_img_rot(seed_points, normal, True)
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
-            rotate_seed_points[point] = new_labeled_slice
+            rotate_seed_points[point] = new_labeled_slice.astype(float)
             seed_points = true_img_rot_back(rotate_seed_points, normal, pad, shape)
-            seed_points[-1] = spo[-1]
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
-            viewer.add_labels(seed_points,name='new seed points')
-
-
-
+            #seed_points[(seed_points != 0.0) & (seed_points != 1.0) & (seed_points != 2.0)] = 0
+            seed_points[(seed_points <= -0.1) & (seed_points >= 0.1) & (seed_points <= 0.9) & (seed_points >= 1.1) & (seed_points <= 2.8) & (seed_points >= 3.2)] = 0
+            seed_points[(seed_points >= -0.1) & (seed_points <= 0.1)] = 0
+            seed_points[(seed_points >= 0.9) & (seed_points <= 1.1)] = 1
+            #seed_points[(seed_points >= 2.8) & (seed_points <= 3.2)] = 3
+            seed_points[seed_points > 2.0 ] = 4
+            seed_points = seed_points.astype(int)
+            #seed_points[seed_points == 0] = 3
+            #seed_points[seed_points == 1] = 3
+            #seed_points[seed_points == 2] = 3
+            print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
+            viewer.add_labels(seed_points.astype(int), name='new seed points')
 
     segmentation, probabilities = segment(img, seed_points)
     seg_layer = viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
     print("Dice coeff is: {}".format(dice_coefficient(segmentation, ground_truth)))
+
 
 def get_uncertainty_field(viewer, draw=False):
     global uncertainty_field
@@ -258,22 +269,25 @@ def on_press_a(viewer):
     # contours[contours>0.5] = 1.0
     # viewer.add_labels(contours.astype(int), name='rot test contours')
 
+
 def dissimilarity_score(image1, image2):
     numerator = np.sum((image1 - np.mean(image1)) * (image2 - np.mean(image2)))
-    denominator = np.sqrt(np.sum((image1 - np.mean(image1))**2)) * np.sqrt(np.sum((image2 - np.mean(image2))**2))
+    denominator = np.sqrt(np.sum((image1 - np.mean(image1)) ** 2)) * np.sqrt(np.sum((image2 - np.mean(image2)) ** 2))
     ncc = 1 - (numerator / denominator)
     return ncc
+
 
 def count_non_matching_pixels(image1, image2):
     non_matching_pixels = np.count_nonzero(image1 != image2)
     return non_matching_pixels
 
+
 @viewer.bind_key('z')
 def test(viewer):
     global img
     x, y, z = img.shape
-    print("{} {} {}".format(x,y,z))
-    print(x*y*z)
+    print("{} {} {}".format(x, y, z))
+    print(x * y * z)
     roti, pad, shape = true_img_rot(img, [0.701, 0.701, 0])
     viewer.add_image(roti, name="rotated 45", colormap="gray", interpolation2d="bicubic")
     roti = true_img_rot_back(roti, [0.701, 0.701, 0], pad, shape)

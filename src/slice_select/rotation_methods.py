@@ -41,8 +41,12 @@ def unpad_image(padded_image, pad_widths, original_shape):
 
     return unpadded_image
 
-def rotate(image, axis, angle_deg, cval=0.0):
+def rotate(image, axis, angle_deg, fl = False, cval=0.0):
     min_value = np.min(image)
+
+    if fl:
+        image = image.astype(float)
+
     # Define the rotation axis and angle
     axis = np.array(axis)  # Example: Rotate around the X-axis
 
@@ -66,7 +70,7 @@ def rotate(image, axis, angle_deg, cval=0.0):
     center = np.array(image.shape) / 2.0
     translation = center - np.dot(rotation_matrix, center)
     # Perform the 3D rotation
-    rotated_image = affine_transform(image, rotation_matrix, offset=translation, order=3, mode='constant', cval=min_value)
+    rotated_image = affine_transform(image, rotation_matrix, offset=translation, order=5, mode='constant', cval=min_value)
 
     return rotated_image
 
@@ -157,7 +161,7 @@ def remove_padding(padded_image, pad_length):
     return unpadded_image
 
 
-def true_img_rot(image, normal):
+def true_img_rot(image, normal, fl=False):
     #print(image.shape)
     image, pad_width, original_shape = pad_image(image)
     #print(image.shape)
@@ -171,11 +175,11 @@ def true_img_rot(image, normal):
     #print(true_rotations)
     rotim = image
     if rotations[0] > 0:
-        rotim = rotate(rotim, [1, 0, 0], get_val(true_rotations[0]), cval=0.0)
+        rotim = rotate(rotim, [1, 0, 0], get_val(true_rotations[0]), fl,  cval=0.0)
     if rotations[1] > 0:
-        rotim = rotate(rotim, [0, 1, 0], get_val(true_rotations[1]), cval=0.0)
+        rotim = rotate(rotim, [0, 1, 0], get_val(true_rotations[1]), fl,  cval=0.0)
     if rotations[2] > 0:
-        rotim = rotate(rotim, [0, 0, 1], get_val(true_rotations[2]), cval=0.0)
+        rotim = rotate(rotim, [0, 0, 1], get_val(true_rotations[2]), fl, cval=0.0)
 
     #rotim = remove_padding(rotim, m)
     return rotim, pad_width, original_shape
