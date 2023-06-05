@@ -1,6 +1,8 @@
 import math
 import numpy as np
 from scipy.ndimage import affine_transform
+from scipy.spatial.transform import Rotation as R
+from scipy.ndimage import map_coordinates
 
 
 def pad_image(image):
@@ -64,7 +66,7 @@ def rotate(image, axis, angle_deg, cval=0.0):
     center = np.array(image.shape) / 2.0
     translation = center - np.dot(rotation_matrix, center)
     # Perform the 3D rotation
-    rotated_image = affine_transform(image, rotation_matrix, offset=translation, order=1, mode='constant', cval=min_value)
+    rotated_image = affine_transform(image, rotation_matrix, offset=translation, order=3, mode='constant', cval=min_value)
 
     return rotated_image
 
@@ -158,7 +160,7 @@ def remove_padding(padded_image, pad_length):
 def true_img_rot(image, normal):
     #print(image.shape)
     image, pad_width, original_shape = pad_image(image)
-    print(image.shape)
+    #print(image.shape)
     x, y, z = image.shape
     m = min(x, min(y, z))
     #image = add_padding(image, m)
@@ -200,6 +202,55 @@ def true_img_rot_back(image, normal, pad_width, original_shape):
     rotim = unpad_image(rotim, pad_width, original_shape)
     #print(rotim.shape)
     return rotim
+
+# Rotates 3D image around image center
+# INPUTS
+#   array: 3D numpy array
+#   orient: list of Euler angles (phi,psi,the)
+# OUTPUT
+#   arrayR: rotated 3D numpy array
+# by E. Moebel, 2020
+def rotate_array(array, orient):
+    phi = orient[0]
+    psi = orient[1]
+    the = orient[2]
+
+    # create meshgrid
+    dim = array.shape
+    ax = np.arange(dim[0])
+    ay = np.arange(dim[1])
+    az = np.arange(dim[2])
+    coords = np.meshgrid(ax, ay, az)
+
+    # stack the meshgrid to position vectors, center them around 0 by substracting dim/2
+    xyz = np.vstack([coords[0].reshape(-1) - float(dim[0]) / 2,  # x coordinate, centered
+                     coords[1].reshape(-1) - float(dim[1]) / 2,  # y coordinate, centered
+                     coords[2].reshape(-1) - float(dim[2]) / 2])  # z coordinate, centered
+
+    # create transformation matrix
+    r = R.from_euler('zxz', [phi, psi, the], degrees=True)
+    mat = r.as_matrix()
+
+    # apply transformation
+    transformed_xyz = np.dot(mat, xyz)
+
+    # extract coordinates
+    x = transformed_xyz[0, :] + float(dim[0]) / 2
+    y = transformed_xyz[1, :] + float(dim[1]) / 2
+    z = transformed_xyz[2, :] + float(dim[2]) / 2
+
+    x = x.reshape((dim[1],dim[0],dim[2]))
+    y = y.reshape((dim[1],dim[0],dim[2]))
+    z = z.reshape((dim[1],dim[0],dim[2])) # reason for strange ordering: see next line
+
+    # the coordinate system seems to be strange, it has to be ordered like this
+    new_xyz = [y, x, z]
+
+    # sample
+    arrayR = map_coordinates(array, new_xyz, order=1)
+    arrayR = np.transpose(arrayR, (1, 0, 2))
+
+    return arrayR
 
 # # Example usage
 # normal_vector = [0, 0.1, 0]

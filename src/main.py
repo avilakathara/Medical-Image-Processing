@@ -12,7 +12,8 @@ import cv2 as cv
 from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from slice_select.discreet_optimization import discreet_get_optimal_slice
-from slice_select.rotation_methods import rotate, image_rotate_1, image_rotate_back_1, true_img_rot, true_img_rot_back
+from slice_select.rotation_methods import rotate, image_rotate_1, image_rotate_back_1, true_img_rot, true_img_rot_back, \
+    rotate_array
 from uncertainty.evaluate_uncertainty import evaluate_uncertainty
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
@@ -116,10 +117,14 @@ def create_contours(viewer):
         elif axis == "z":
             contours = create_contour(ground_truth[:, :, point])
         else:
+            gto = ground_truth
             ground_truth, pad, shape = true_img_rot(ground_truth, normal)
-            print("shape of gt is {}".format(ground_truth.shape))
             contours = create_contour(ground_truth[point])
-            ground_truth = true_img_rot_back(ground_truth, normal, pad, shape)
+            #ground_truth = true_img_rot_back(ground_truth, normal, pad, shape)
+            ground_truth = gto
+            print(np.min(ground_truth), np.max(ground_truth))
+            contours[contours > 0.7] = 1.0
+            contours[contours < 0.0] = 0.0
         contours_display = np.full(ground_truth.shape, False)
         if axis == "x":
             contours_display[point] = contours
@@ -169,10 +174,14 @@ def get_segmentation(viewer):
         elif axis == "z":
             seed_points[:, :, point] = new_labeled_slice
         else:
+            spo = seed_points
             viewer.add_labels(seed_points,name='seed points')
             rotate_seed_points, pad, shape = true_img_rot(seed_points, normal)
-            # rotate_seed_points[point] = new_labeled_slice
+            print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
+            rotate_seed_points[point] = new_labeled_slice
             seed_points = true_img_rot_back(rotate_seed_points, normal, pad, shape)
+            seed_points[-1] = spo[-1]
+            print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
             viewer.add_labels(seed_points,name='new seed points')
 
 
@@ -240,23 +249,45 @@ def on_press_a(viewer):
     create_contours(viewer)
 
     viewer.add_labels(contours.astype(int), name='contours')
-    contours = contours.astype(float)
-    normal = np.array([0.707, 0.707, 0])
-    contours, pad, shape = true_img_rot(contours,normal)
-    contours = true_img_rot_back(contours,normal,pad,shape)
-    print(np.min(contours),np.max(contours))
-    contours[contours>0] = 1.0
-    viewer.add_labels(contours.astype(int), name='rot test contours')
+    # contours = contours.astype(float)
+    # normal = np.array([0.707, 0.707, 0])
+    # contours, pad, shape = true_img_rot(contours,normal)
+    # print(np.min(contours),np.max(contours))
+    # contours = true_img_rot_back(contours,normal,pad,shape)
+    # print(np.min(contours),np.max(contours))
+    # contours[contours>0.5] = 1.0
+    # viewer.add_labels(contours.astype(int), name='rot test contours')
 
+def dissimilarity_score(image1, image2):
+    numerator = np.sum((image1 - np.mean(image1)) * (image2 - np.mean(image2)))
+    denominator = np.sqrt(np.sum((image1 - np.mean(image1))**2)) * np.sqrt(np.sum((image2 - np.mean(image2))**2))
+    ncc = 1 - (numerator / denominator)
+    return ncc
 
+def count_non_matching_pixels(image1, image2):
+    non_matching_pixels = np.count_nonzero(image1 != image2)
+    return non_matching_pixels
 
 @viewer.bind_key('z')
 def test(viewer):
     global img
-    roti, pad, shape = true_img_rot(img, [0, 0, 1])
+    x, y, z = img.shape
+    print("{} {} {}".format(x,y,z))
+    print(x*y*z)
+    roti, pad, shape = true_img_rot(img, [0.701, 0.701, 0])
     viewer.add_image(roti, name="rotated 45", colormap="gray", interpolation2d="bicubic")
-    roti = true_img_rot_back(roti, [0, 0, 1], pad, shape)
+    roti = true_img_rot_back(roti, [0.701, 0.701, 0], pad, shape)
     viewer.add_image(roti, name="unrotated 45", colormap="gray", interpolation2d="bicubic")
+
+    # roti = rotate_array(img, [0, 0, 45])
+    # viewer.add_image(roti, name="rotated 45", colormap="gray", interpolation2d="bicubic")
+    # roti = rotate_array(img, [0, 0, 315])
+    # viewer.add_image(roti, name="unrotated 45", colormap="gray", interpolation2d="bicubic")
+
+    score = dissimilarity_score(img, roti)
+    print("Dissimilarity score (NCC):", score)
+    non_matching_pixels = count_non_matching_pixels(img, roti)
+    print("Number of non-matching pixels:", non_matching_pixels)
     # roti = true_img_rot_back(roti, [0, 0, 1])
     # viewer.add_image(roti, name="rotated -45", colormap="gray", interpolation2d="bicubic")
 

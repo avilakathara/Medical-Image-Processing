@@ -136,6 +136,10 @@ def get_segmentation():
             # viewer.add_labels(seed_points, name="seedpoints debug".format(iterations))
         elif axis == "x":
             seed_points[point] = new_labeled_slice
+        elif axis == "y":
+            seed_points[:, point, :] = new_labeled_slice
+        elif axis == "z":
+            seed_points[:, :, point] = new_labeled_slice
         else:
             rotate_seed_points = image_rotate_1(seed_points,normal)
             rotate_seed_points[point] = new_labeled_slice
