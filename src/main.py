@@ -145,6 +145,25 @@ def create_contours(viewer):
         # np.save("contours", contours)
         lw_layer = viewer.add_labels(contours, name='INPUT {}'.format(iterations), opacity=1.0)
 
+def replace_value(array):
+    # Create a copy of the input array
+    result = array.copy()
+
+    # Get the dimensions of the array
+    depth, height, width = array.shape
+
+    # Iterate over each index
+    for d in range(depth):
+        for h in range(height):
+            for w in range(width):
+                # Check if the current value is 1
+                if array[d, h, w] == 1:
+                    # Check the neighborhood for a value of 4
+                    neighborhood = array[max(0, d-1):min(d+2, depth), max(0, h-1):min(h+2, height), max(0, w-1):min(w+2, width)]
+                    if np.any(neighborhood == 4):
+                        result[d, h, w] = 4
+
+    return result
 
 def get_segmentation(viewer):
     global segmentation
@@ -162,6 +181,7 @@ def get_segmentation(viewer):
     else:
         new_labeled_slice = convert_to_labels2d(contours).astype(int)
         new_labeled_slice[new_labeled_slice == 2] = 4
+        viewer.add_labels(new_labeled_slice, name='labeled slice')
         # if axis == "d1":
         #     # rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
         #     rotate_seed_points = rotate(seed_points, normal, 45)
@@ -184,17 +204,21 @@ def get_segmentation(viewer):
             seed_points = true_img_rot_back(rotate_seed_points, normal, pad, shape)
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
             #seed_points[(seed_points != 0.0) & (seed_points != 1.0) & (seed_points != 2.0)] = 0
-            seed_points[(seed_points <= -0.1) & (seed_points >= 0.1) & (seed_points <= 0.9) & (seed_points >= 1.1) & (seed_points <= 2.8) & (seed_points >= 3.2)] = 0
+            seed_points[(seed_points <= -0.1) & (seed_points >= 0.1) & (seed_points <= 0.95) & (seed_points >= 1.05) & (seed_points <= 2.8) & (seed_points >= 3.2)] = 0
             seed_points[(seed_points >= -0.1) & (seed_points <= 0.1)] = 0
             seed_points[(seed_points >= 0.9) & (seed_points <= 1.1)] = 1
             #seed_points[(seed_points >= 2.8) & (seed_points <= 3.2)] = 3
             seed_points[seed_points > 2.0 ] = 4
             seed_points = seed_points.astype(int)
+            seed_points = replace_value(seed_points)
             #seed_points[seed_points == 0] = 3
             #seed_points[seed_points == 1] = 3
             #seed_points[seed_points == 2] = 3
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
             viewer.add_labels(seed_points.astype(int), name='new seed points')
+            rotate_seed_points, pad, shape = true_img_rot(seed_points, normal, True)
+            slice = rotate_seed_points[point]
+            viewer.add_labels(new_labeled_slice, name='labeled slice after rotation')
 
     segmentation, probabilities = segment(img, seed_points)
     seg_layer = viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
