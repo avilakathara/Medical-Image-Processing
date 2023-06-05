@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 # from scipy.ndimage import rotate
 from slice_select.rotation_methods import rotate
 
-from src.slice_select.rotation_methods import true_img_rot
+from slice_select.rotation_methods import true_img_rot
 
 
 def discreet_get_optimal_slice(uncertainty, x_axis=False, y_axis=False, z_axis=False, diagonal_1=False,

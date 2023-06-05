@@ -160,6 +160,7 @@ def get_segmentation(viewer):
         seed_points = convert_to_labels(contours)
     else:
         new_labeled_slice = convert_to_labels2d(contours).astype(int)
+        viewer.add_labels(new_labeled_slice.astype(int),name='new labeled slice')
         # if axis == "d1":
         #     # rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
         #     rotate_seed_points = rotate(seed_points, normal, 45)
@@ -178,7 +179,7 @@ def get_segmentation(viewer):
             viewer.add_labels(seed_points,name='seed points')
             rotate_seed_points, pad, shape = true_img_rot(seed_points, normal)
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
-            rotate_seed_points[point] = new_labeled_slice
+            # rotate_seed_points[point] = new_labeled_slice
             seed_points = true_img_rot_back(rotate_seed_points, normal, pad, shape)
             seed_points[-1] = spo[-1]
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
@@ -247,16 +248,6 @@ def on_press_a(viewer):
     except:
         pass
     create_contours(viewer)
-
-    viewer.add_labels(contours.astype(int), name='contours')
-    # contours = contours.astype(float)
-    # normal = np.array([0.707, 0.707, 0])
-    # contours, pad, shape = true_img_rot(contours,normal)
-    # print(np.min(contours),np.max(contours))
-    # contours = true_img_rot_back(contours,normal,pad,shape)
-    # print(np.min(contours),np.max(contours))
-    # contours[contours>0.5] = 1.0
-    # viewer.add_labels(contours.astype(int), name='rot test contours')
 
 def dissimilarity_score(image1, image2):
     numerator = np.sum((image1 - np.mean(image1)) * (image2 - np.mean(image2)))
