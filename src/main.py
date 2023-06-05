@@ -4,6 +4,8 @@ import json
 import nrrd
 import tkinter as tk
 from tkinter import filedialog
+import matplotlib.pyplot as plt
+import numpy as np
 from qtpy.QtWidgets import QMessageBox
 import cv2 as cv
 
@@ -152,7 +154,7 @@ def get_segmentation(viewer):
     if seed_points is None:
         seed_points = convert_to_labels(contours)
     else:
-        new_labeled_slice = convert_to_labels2d(contours)
+        new_labeled_slice = convert_to_labels2d(contours).astype(int)
         # if axis == "d1":
         #     # rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
         #     rotate_seed_points = rotate(seed_points, normal, 45)
@@ -167,9 +169,14 @@ def get_segmentation(viewer):
         elif axis == "z":
             seed_points[:, :, point] = new_labeled_slice
         else:
+            viewer.add_labels(seed_points,name='seed points')
             rotate_seed_points, pad, shape = true_img_rot(seed_points, normal)
-            rotate_seed_points[point] = new_labeled_slice
+            # rotate_seed_points[point] = new_labeled_slice
             seed_points = true_img_rot_back(rotate_seed_points, normal, pad, shape)
+            viewer.add_labels(seed_points,name='new seed points')
+
+
+
 
     segmentation, probabilities = segment(img, seed_points)
     seg_layer = viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
@@ -225,11 +232,22 @@ def confirm_dialog(title, message):
 # MAKE ANNOTATIONS
 @viewer.bind_key('a')
 def on_press_a(viewer):
+    global contours
     try:
         viewer.layers.remove(lw_layer)
     except:
         pass
     create_contours(viewer)
+
+    viewer.add_labels(contours.astype(int), name='contours')
+    contours = contours.astype(float)
+    normal = np.array([0.707, 0.707, 0])
+    contours, pad, shape = true_img_rot(contours,normal)
+    contours = true_img_rot_back(contours,normal,pad,shape)
+    print(np.min(contours),np.max(contours))
+    contours[contours>0] = 1.0
+    viewer.add_labels(contours.astype(int), name='rot test contours')
+
 
 
 @viewer.bind_key('z')
@@ -300,29 +318,29 @@ def on_press_s(viewer):
 # INITIATE
 napari.run()
 
-while(sim > 0):
-    try:
-        viewer.layers.remove(lw_layer)
-    except:
-        pass
-    create_contours(viewer)
-    try:
-        viewer.layers.remove(lw_layer)
-    except:
-        pass
-    try:
-        viewer.layers.remove(seg_layer)
-    except:
-        pass
-    try:
-        viewer.layer.remove(chosen_layer)
-    except:
-        pass
-
-    iterations += 1
-    get_segmentation(viewer)
-    get_uncertainty_field(viewer)
-    # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
-    user_check(viewer)
-
-    sim -= 1
+# while(sim > 0):
+#     try:
+#         viewer.layers.remove(lw_layer)
+#     except:
+#         pass
+#     create_contours(viewer)
+#     try:
+#         viewer.layers.remove(lw_layer)
+#     except:
+#         pass
+#     try:
+#         viewer.layers.remove(seg_layer)
+#     except:
+#         pass
+#     try:
+#         viewer.layer.remove(chosen_layer)
+#     except:
+#         pass
+#
+#     iterations += 1
+#     get_segmentation(viewer)
+#     get_uncertainty_field(viewer)
+#     # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
+#     user_check(viewer)
+#
+#     sim -= 1
