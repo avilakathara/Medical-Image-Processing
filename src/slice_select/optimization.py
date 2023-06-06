@@ -27,10 +27,10 @@ def get_optimal_slice(uncertainty):
     highest_point = [-10000, -10000, -10000]
     point_step_size = 0.5
     normal_step_size = 0.02
-
+    chosen_normal = None
     normal = [1, 0, 0]
 
-    iterations = 1
+    iterations = 10
 
     for i in range(0, iterations):
         # Generate random point that, together with a normal, defines a plane
@@ -58,8 +58,9 @@ def get_optimal_slice(uncertainty):
         if highest_uncertainty < current_uncertainty:
             highest_uncertainty = current_uncertainty
             highest_point = current_point
+            chosen_normal = current_normal
 
-    return uncertainty[highest_point], highest_point, normal, "x"
+    return highest_uncertainty, highest_point, chosen_normal, "gradient descent"
 
 
 # Start pos is of type [x,y,z]
@@ -69,13 +70,13 @@ def gradient_descent(uncertainty, start_pos, start_normal, point_step_size, norm
     unrounded_pos = start_pos.astype(float)
     current_normal = start_normal
 
-    for i in range(250):
+    for i in range(150):
         # Update the point position based on equation 8
         gradient, indexes, uv_indexes, a, b = get_point_gradient(uncertainty, current_pos, current_normal, gradients)
 
         # gradient ascent
         pos_update = gradient * point_step_size
-        print(unrounded_pos)
+        #print(unrounded_pos)
         unrounded_pos += pos_update
         current_pos = unrounded_pos.astype(int)
 
@@ -106,9 +107,9 @@ def gradient_descent(uncertainty, start_pos, start_normal, point_step_size, norm
         current_normal += normal_step_size * normal_update
         current_normal /= np.linalg.norm(current_normal)
 
-        print("current gradient: " + str(gradient))
-        print("current point: " + str(current_pos))
-        print("current normal: " + str(current_normal))
+        #print("current gradient: " + str(gradient))
+        #print("current point: " + str(current_pos))
+        #print("current normal: " + str(current_normal))
 
     return current_pos, current_normal
 

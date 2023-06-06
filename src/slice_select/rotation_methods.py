@@ -10,7 +10,7 @@ def pad_image(image):
     max_axis = np.argmax(current_shape)
 
     # Find the largest size among all dimensions
-    max_size = current_shape[max_axis]
+    max_size = int(current_shape[max_axis] * 1.2)
 
     # Find the smallest value in the original image
     min_value = np.min(image)
@@ -140,6 +140,40 @@ def find_rotation(normal):
 
     return axis * angle
 
+def get_rotated_point(normal, point):
+    # Normalize the normal vector
+    normal = np.array(normal)
+    normal /= np.linalg.norm(normal)
+
+    # Check if the vectors are already parallel
+    if np.allclose(normal, [1, 0, 0]):
+        return point  # No rotation needed, return the original point
+
+    # Compute the cosine of the angle between the vectors
+    cosine_angle = np.dot(normal, [1, 0, 0])
+
+    # Compute the angle in radians
+    angle = math.acos(cosine_angle)
+
+    # Determine the axis of rotation
+    axis = np.cross(normal, [1, 0, 0])
+    axis /= np.linalg.norm(axis)
+
+    # Calculate the rotation matrix
+    c = math.cos(angle)
+    s = math.sin(angle)
+    t = 1 - c
+    rotation_matrix = np.array([[t * axis[0]**2 + c, t * axis[0] * axis[1] - s * axis[2], t * axis[0] * axis[2] + s * axis[1]],
+                                [t * axis[0] * axis[1] + s * axis[2], t * axis[1]**2 + c, t * axis[1] * axis[2] - s * axis[0]],
+                                [t * axis[0] * axis[2] - s * axis[1], t * axis[1] * axis[2] + s * axis[0], t * axis[2]**2 + c]])
+
+    # Convert the point to a NumPy array
+    point = np.array(point)
+
+    # Apply the rotation to the point
+    transformed_point = np.dot(rotation_matrix, point)
+
+    return transformed_point
 
 def get_val(x):
     if x < 0:
@@ -147,32 +181,12 @@ def get_val(x):
     return x
 
 
-def add_padding(image, pad_length):
-    pad_width = ((pad_length, pad_length), (pad_length, pad_length), (pad_length, pad_length))
-    min_value = np.min(image)
-    padded_image = np.pad(image, pad_width, mode='constant', constant_values=min_value)
-    return padded_image
-
-
-def remove_padding(padded_image, pad_length):
-    pad_width = ((pad_length, pad_length), (pad_length, pad_length), (pad_length, pad_length))
-    unpadded_image = padded_image[pad_width[0][0]:-pad_width[0][1], pad_width[1][0]:-pad_width[1][1],
-                     pad_width[2][0]:-pad_width[2][1]]
-    return unpadded_image
-
-
 def true_img_rot(image, normal, fl=False):
-    #print(image.shape)
     image, pad_width, original_shape = pad_image(image)
-    #print(image.shape)
     x, y, z = image.shape
-    m = min(x, min(y, z))
-    #image = add_padding(image, m)
     normal = np.array(normal).astype(float)
     rotations = find_rotation(normal)
     true_rotations = np.degrees(rotations)
-    rotations = abs(true_rotations)
-    #print(true_rotations)
     rotim = image
     if rotations[0] > 0:
         rotim = rotate(rotim, [1, 0, 0], get_val(true_rotations[0]), fl,  cval=0.0)
@@ -186,14 +200,9 @@ def true_img_rot(image, normal, fl=False):
 
 
 def true_img_rot_back(image, normal, pad_width, original_shape):
-    x, y, z = image.shape
-    m = min(x, min(y, z))
-    #image = add_padding(image, m)
     normal = np.array(normal).astype(float)
     rotations = find_rotation(normal)
     true_rotations = -1 * np.degrees(rotations)
-    #print(true_rotations)
-    rotations = abs(true_rotations)
     rotim = image
     if rotations[0] > 0:
         rotim = rotate(rotim, [1, 0, 0], get_val(true_rotations[0]), cval=0.0)
@@ -261,3 +270,4 @@ def rotate_array(array, orient):
 # rotation = find_rotation(normal_vector)
 # rotation = np.degrees(rotation)
 # print("Rotation axis and angle:", rotation)
+

@@ -13,7 +13,7 @@ from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
 from slice_select.discreet_optimization import discreet_get_optimal_slice
 from slice_select.rotation_methods import rotate, image_rotate_1, image_rotate_back_1, true_img_rot, true_img_rot_back, \
-    rotate_array
+    rotate_array, get_rotated_point
 from uncertainty.evaluate_uncertainty import evaluate_uncertainty
 from uncertainty.uncertainty import calculate_uncertainty_fields
 
@@ -77,14 +77,15 @@ point = None
 axis = None
 chosen_layer = None
 
-
 sim = 1
+
 
 def dice_coefficient(mask1, mask2):
     intersection = np.sum(mask1 * mask2)
     total = np.sum(mask1) + np.sum(mask2)
     dice = (2.0 * intersection) / total
     return dice
+
 
 def create_contours(viewer):
     global seed_points
@@ -120,7 +121,7 @@ def create_contours(viewer):
             gto = ground_truth
             ground_truth, pad, shape = true_img_rot(ground_truth, normal)
             contours = create_contour(ground_truth[point])
-            #ground_truth = true_img_rot_back(ground_truth, normal, pad, shape)
+            # ground_truth = true_img_rot_back(ground_truth, normal, pad, shape)
             ground_truth = gto
             print(np.min(ground_truth), np.max(ground_truth))
             contours[contours > 0.7] = 1.0
@@ -145,7 +146,8 @@ def create_contours(viewer):
         # np.save("contours", contours)
         lw_layer = viewer.add_labels(contours, name='INPUT {}'.format(iterations), opacity=1.0)
 
-def replace_value(array):
+
+def replace_value3(array):
     # Create a copy of the input array
     result = array.copy()
 
@@ -159,11 +161,34 @@ def replace_value(array):
                 # Check if the current value is 1
                 if array[d, h, w] == 1:
                     # Check the neighborhood for a value of 4
-                    neighborhood = array[max(0, d-1):min(d+2, depth), max(0, h-1):min(h+2, height), max(0, w-1):min(w+2, width)]
+                    neighborhood = array[max(0, d - 1):min(d + 2, depth), max(0, h - 1):min(h + 2, height),
+                                   max(0, w - 1):min(w + 2, width)]
                     if np.any(neighborhood == 4):
                         result[d, h, w] = 4
 
     return result
+
+
+def replace_value1(array):
+    # Create a copy of the input array
+    result = array.copy()
+
+    # Get the dimensions of the array
+    depth, height, width = array.shape
+
+    # Iterate over each index
+    for d in range(depth):
+        for h in range(height):
+            for w in range(width):
+                # Check if the current value is 1
+                if array[d, h, w] == 1:
+                    # Check the neighborhood for a value of 4
+                    neighborhood = array[d, h, w]
+                    if neighborhood == 4:
+                        result[d, h, w] = 4
+
+    return result
+
 
 def get_segmentation(viewer):
     global segmentation
@@ -181,7 +206,7 @@ def get_segmentation(viewer):
     else:
         new_labeled_slice = convert_to_labels2d(contours).astype(int)
         new_labeled_slice[new_labeled_slice == 2] = 4
-        viewer.add_labels(new_labeled_slice, name='labeled slice')
+        # viewer.add_labels(new_labeled_slice, name='labeled slice')
         # if axis == "d1":
         #     # rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
         #     rotate_seed_points = rotate(seed_points, normal, 45)
@@ -203,26 +228,28 @@ def get_segmentation(viewer):
             rotate_seed_points[point] = new_labeled_slice.astype(float)
             seed_points = true_img_rot_back(rotate_seed_points, normal, pad, shape)
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
-            #seed_points[(seed_points != 0.0) & (seed_points != 1.0) & (seed_points != 2.0)] = 0
-            seed_points[(seed_points <= -0.1) & (seed_points >= 0.1) & (seed_points <= 0.95) & (seed_points >= 1.05) & (seed_points <= 2.8) & (seed_points >= 3.2)] = 0
+            # seed_points[(seed_points != 0.0) & (seed_points != 1.0) & (seed_points != 2.0)] = 0
+            seed_points[(seed_points <= -0.1) & (seed_points >= 0.1) & (seed_points <= 0.9) & (seed_points >= 1.1) & (
+                        seed_points <= 2.8) & (seed_points >= 3.2)] = 0
             seed_points[(seed_points >= -0.1) & (seed_points <= 0.1)] = 0
             seed_points[(seed_points >= 0.9) & (seed_points <= 1.1)] = 1
-            #seed_points[(seed_points >= 2.8) & (seed_points <= 3.2)] = 3
-            seed_points[seed_points > 2.0 ] = 4
+            # seed_points[(seed_points >= 2.8) & (seed_points <= 3.2)] = 3
+            seed_points[seed_points > 2.0] = 4
             seed_points = seed_points.astype(int)
-            seed_points = replace_value(seed_points)
-            #seed_points[seed_points == 0] = 3
-            #seed_points[seed_points == 1] = 3
-            #seed_points[seed_points == 2] = 3
+            seed_points = replace_value3(seed_points)
+            # seed_points[seed_points == 0] = 3
+            # seed_points[seed_points == 1] = 3
+            # seed_points[seed_points == 2] = 3
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
             viewer.add_labels(seed_points.astype(int), name='new seed points')
             rotate_seed_points, pad, shape = true_img_rot(seed_points, normal, True)
             slice = rotate_seed_points[point]
-            viewer.add_labels(new_labeled_slice, name='labeled slice after rotation')
+            # viewer.add_labels(new_labeled_slice, name='labeled slice after rotation')
 
     segmentation, probabilities = segment(img, seed_points)
     seg_layer = viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
     print("Dice coeff is: {}".format(dice_coefficient(segmentation, ground_truth)))
+
 
 def get_uncertainty_field(viewer, draw=False):
     global uncertainty_field
@@ -244,10 +271,16 @@ def user_check(viewer, discrete=True):
 
     # Find optimal slice
     # uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
-    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, False, False, False, True)
-    axis = chosen_axis
 
-    print("Iteration {} - MAX UNCERTAINTY at plane {} = {}".format(iterations, chosen_axis, point))
+    if discrete:
+        uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, True, True, True)
+        axis = chosen_axis
+    else:
+        uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
+        axis = chosen_axis
+
+    print("Iteration {} - MAX UNCERTAINTY at plane normal {} and point {} = {}".format(iterations, normal, point,
+                                                                                       uncertainty))
 
     if chosen_axis == 'x' and discrete:
         chosen_slice = img[point]
@@ -257,6 +290,12 @@ def user_check(viewer, discrete=True):
         chosen_slice = img[:, :, point]
     elif chosen_axis == "d1" and discrete:
         image_rot, pad, shape = true_img_rot(img, normal)
+        chosen_slice = image_rot[point]
+    else:
+        image_rot, pad, shape = true_img_rot(img, normal)
+        point = [point[0] + pad[0][0], point[1] + pad[1][0], point[2] + pad[2][0]]
+        point = get_rotated_point(normal, point)
+        point = int(point[0])
         chosen_slice = image_rot[point]
 
     chosen_layer = viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
@@ -310,9 +349,9 @@ def test(viewer):
     x, y, z = img.shape
     print("{} {} {}".format(x, y, z))
     print(x * y * z)
-    roti, pad, shape = true_img_rot(img, [0.701, 0.701, 0])
+    roti, pad, shape = true_img_rot(img, [0.5914, -0.0858, -0.8017])
     viewer.add_image(roti, name="rotated 45", colormap="gray", interpolation2d="bicubic")
-    roti = true_img_rot_back(roti, [0.701, 0.701, 0], pad, shape)
+    roti = true_img_rot_back(roti, [0.5914, -0.0858, -0.8017], pad, shape)
     viewer.add_image(roti, name="unrotated 45", colormap="gray", interpolation2d="bicubic")
 
     # roti = rotate_array(img, [0, 0, 45])
@@ -322,8 +361,6 @@ def test(viewer):
 
     score = dissimilarity_score(img, roti)
     print("Dissimilarity score (NCC):", score)
-    non_matching_pixels = count_non_matching_pixels(img, roti)
-    print("Number of non-matching pixels:", non_matching_pixels)
     # roti = true_img_rot_back(roti, [0, 0, 1])
     # viewer.add_image(roti, name="rotated -45", colormap="gray", interpolation2d="bicubic")
 
@@ -356,7 +393,7 @@ def on_press_s(viewer):
     get_segmentation(viewer)
     get_uncertainty_field(viewer)
     # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
-    user_check(viewer)
+    user_check(viewer, False)
 
 
 # TODO: uncomment this code and use it to automate main, and delete key bindings
