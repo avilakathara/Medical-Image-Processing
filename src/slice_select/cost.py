@@ -15,6 +15,15 @@ def cost(uncertainty, p, rot_x, rot_y):
     result = np.sum(values)
     return result
 
+
+def cost_using_normal(uncertainty, p, normal):
+    size = uncertainty.shape
+    coordinates = get_coordinates(size, p, normal)
+    values = uncertainty[coordinates[:, 0], coordinates[:, 1], coordinates[:, 2]]
+
+    result = np.sum(values)
+    return result
+
 # returns the 3D coordinates that lie in the specified plane
 #    size:  the shape of the the uncertainty field
 #       p:  a 3D point that lies on the plane
