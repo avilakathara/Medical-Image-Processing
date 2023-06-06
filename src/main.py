@@ -225,7 +225,11 @@ def get_segmentation(viewer):
             viewer.add_labels(seed_points, name='seed points')
             rotate_seed_points, pad, shape = true_img_rot(seed_points, normal, True)
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
-            rotate_seed_points[point] = new_labeled_slice.astype(float)
+
+            # see what happens when only labeled values are added
+            rotate_seed_points[point][new_labeled_slice == 4] = 4
+            rotate_seed_points[point][new_labeled_slice == 1] = 1
+            # rotate_seed_points[point] = new_labeled_slice.astype(float)
             seed_points = true_img_rot_back(rotate_seed_points, normal, pad, shape)
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
             # seed_points[(seed_points != 0.0) & (seed_points != 1.0) & (seed_points != 2.0)] = 0
@@ -320,7 +324,6 @@ def on_press_a(viewer):
         pass
     create_contours(viewer)
 
-    viewer.add_labels(contours.astype(int), name='contours')
     # contours = contours.astype(float)
     # normal = np.array([0.707, 0.707, 0])
     # contours, pad, shape = true_img_rot(contours,normal)
@@ -394,7 +397,6 @@ def on_press_s(viewer):
     get_uncertainty_field(viewer)
     # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
     user_check(viewer, False)
-
 
 # TODO: uncomment this code and use it to automate main, and delete key bindings
 # user_interaction = 0
