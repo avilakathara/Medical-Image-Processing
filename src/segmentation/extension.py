@@ -17,7 +17,7 @@ window.destroy()
 
 
 # INITIATE NAPARI
-# viewer = napari.Viewer()
+viewer = napari.Viewer()
 
 # CHOOSE ORGAN
 # 1=BrainStem,2=Chiasm,3=Mandible,4=OpticNerve_L,5=OpticNerve_R,6=Parotid_L,7=Parotid_R,8=Submandibular_L,9=Submandibular_R)
@@ -28,6 +28,7 @@ chosen_organ = 3
 img_ai = np.load(folder_path + str("/") + os.listdir(folder_path)[1])
 
 # LOAD PREDICTIONS
+global predictions
 predictions = []
 for i in range(2,8):
     prediction = np.load(folder_path + str("/") + os.listdir(folder_path)[i])
@@ -43,7 +44,7 @@ ground_truth[ground_truth != 0] = 1
 ground_truth = ground_truth.astype(int)
 
 
-approach = 3
+approach = 4
 
 # APPROACH 1
 if approach == 1:
@@ -78,16 +79,21 @@ if approach == 3:
     seed_points[sum_predictions == 0] = 2
     seed_points[sum_predictions == 6] = 1
 
+# APPROACH 4
+# use baseline seeds
+if approach == 4:
+    seed_points = convert_to_labels(automatic_contours(ground_truth))
 
 # viewer.add_image(img, name="CT_SCAN", colormap="gray", interpolation2d="bicubic")
-# viewer.add_image(img_ai, name="CT_SCAN AI", colormap="gray", interpolation2d="bicubic")
+viewer.add_image(img_ai, name="CT_SCAN AI", colormap="gray", interpolation2d="bicubic")
 # viewer.add_labels(seed_points.astype(int), name="seed points")
 
 
-#
-# segmentation, prob = segment(img_ai,seed_points)
-# viewer.add_labels(segmentation,name="segmentation")
-#
+print("img shape: ",img_ai.shape,", seed_points shape: ",seed_points.shape,", predictions shape: ",predictions.shape)
+segmentation, prob = segment(img_ai,seed_points,pred = predictions)
+viewer.add_labels(segmentation,name="segmentation")
+
+
 
 
 def save_all_as_numpy():
@@ -122,5 +128,5 @@ def save_all_as_numpy():
                 np.save(output.parent.joinpath("maskpred_"+str(i)+".npy"), img_arr)
 
 
-# napari.run()
+napari.run()
 

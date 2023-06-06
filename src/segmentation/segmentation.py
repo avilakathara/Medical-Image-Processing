@@ -1,16 +1,48 @@
+from pathlib import Path
 
 import numpy as np
 import time
 import math
 import cv2 as cv
-
-from skimage.segmentation import random_walker
+import skimage.segmentation.random_walker_segmentation as rw
+# from skimage.segmentation import random_walker
 from skimage.segmentation import flood
 from skimage.morphology import binary_dilation
 from scipy.ndimage import affine_transform
 from datetime import datetime
 
 now = datetime.now()
+
+# path = r'C:\Users\Bram\Documents\RP\miccai_data_numpy\part1\0522c0002'
+# img = np.load(Path(path + str("\img.npy")))
+# structures = np.load(Path(path + str("\structures.npy")))
+# z = np.any(structures, axis=(1, 2))
+# y = np.any(structures, axis=(0, 2))
+# x = np.any(structures, axis=(0, 1))
+# zmin, zmax = np.where(z)[0][[0, -1]]
+# ymin, ymax = np.where(y)[0][[0, -1]]
+# xmin, xmax = np.where(x)[0][[0, -1]]
+# z_offset = 1
+# xy_offset = 10
+# zmin = max(0, zmin - z_offset)
+# ymin = max(0, ymin - xy_offset)
+# xmin = max(0, xmin - xy_offset)
+# zmax = min(len(img), zmax + z_offset + 1)
+# ymax = min(len(img[0]), ymax + xy_offset + 1)
+# xmax = min(len(img[0][0]), xmax + xy_offset + 1)
+#
+# img = img[zmin:zmax, ymin:ymax, xmin:xmax]
+# structures = structures[zmin:zmax, ymin:ymax, xmin:xmax]
+# ground_truth = np.zeros(structures.shape).astype(int)
+#
+# # CHOOSE ORGAN
+# # 1=BrainStem,2=Chiasm,3=Mandible,4=OpticNerve_L,5=OpticNerve_R,6=Parotid_L,7=Parotid_R,8=Submandibular_L,9=Submandibular_R)
+# organ_choice = 3
+# ground_truth[structures == organ_choice] = 1
+
+
+predictions = None
+
 
 def convert_to_labels(drawn_contours, z_bound_down=-1, z_bound_up=-1):
     drawn_contours = drawn_contours.astype(int)
@@ -92,11 +124,16 @@ def create_contour(ground_truth):
             result[point[0][1], point[0][0]] = True
     return result
 
-def segment(image, seed_points):
+def segment(image, seed_points, pred = None):
+    global predictions
+    if pred is not None:
+        predictions = pred
+        rw._compute_weights_3d = modified_weights
+
     print("Generating segment...")
     seed_points = seed_points.astype(int)
     start_time = time.time()
-    prob = random_walker(image, seed_points.astype(int), beta=0.1, mode='cg_j',tol=0.001, copy=False, return_full_prob=True)
+    prob = rw.random_walker(image, seed_points.astype(int), beta=0.1, mode='cg_j',tol=0.1, copy=False, return_full_prob=True)
     # print(time.time() - start_time, "seconds")
 
     labels = np.zeros(image.shape).astype(int)
@@ -207,7 +244,44 @@ def image_rotate_back(image, normal):
     #     rotated_image = rot(rotated_image, axis, angle)
 
     return rotated_image
+def prediction_weights(predictions,spacing,eps):
+    sum_preds = np.sum(predictions,axis=0)
+    weights = np.concatenate(
+        [np.diff(sum_preds, axis=ax).ravel() / spacing[ax]
+         for ax in [2, 1, 0] if sum_preds.shape[ax] > 1], axis=0)
+    weights -= np.min(weights)
+    weights /= np.max(weights)
+    return -weights + eps
+
+def modified_weights(data, spacing, beta, eps, multichannel):
+    global predictions
+    # Weight calculation is main difference in multispectral version
+    # Original gradient**2 replaced with sum of gradients ** 2
+    gradients = np.concatenate(
+        [np.diff(data[..., 0], axis=ax).ravel() / spacing[ax]
+         for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
+
+    for channel in range(1, data.shape[-1]):
+        gradients += np.concatenate(
+            [np.diff(data[..., channel], axis=ax).ravel() / spacing[ax]
+             for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
+
+    # All channels considered together in this standard deviation
+    scale_factor = -beta / (10 * data.std())
+    if multichannel:
+        # New final term in beta to give == results in trivial case where
+        # multiple identical spectra are passed.
+        scale_factor /= np.sqrt(data.shape[-1])
+    weights = np.exp(scale_factor * gradients)
+    weights += eps
+
+    weights = -weights
+    pred_weights = prediction_weights(predictions,spacing,eps)
+    print(np.min(weights),np.max(weights),np.count_nonzero(weights))
+    print(np.min(pred_weights),np.max(pred_weights),np.count_nonzero(pred_weights))
+    w_1 = 0
+    w_2 = 1
+    return w_1*weights + w_2*pred_weights
 
 
-
-
+# segmentation, prob = segment(img,convert_to_labels(automatic_contours(ground_truth)))
