@@ -3,7 +3,7 @@ import numpy as np
 import time
 import math
 import cv2 as cv
-
+import matplotlib.pyplot as plt
 from skimage.segmentation import random_walker
 from skimage.segmentation import flood
 from skimage.morphology import binary_dilation
@@ -18,6 +18,7 @@ def convert_to_labels(drawn_contours, z_bound_down=-1, z_bound_up=-1):
         if index == 0 or index == len(drawn_contours)-1:
             drawn_contours[index] = np.ones(drawn_contours[0].shape)*2
         else:
+            # print("index= ",index)
             drawn_contours[index] = convert_to_labels2d(slice)
     return drawn_contours
 
@@ -45,31 +46,63 @@ def convert_to_labels2d(slice):
         for point in contour:
             draw_contour[point[0][1], point[0][0]] = 1
 
-        dilation = binary_dilation(draw_contour,footprint=np.ones((3, 3)))
-        filled_background = np.ones(slice.shape)
-        filled_background[flood(dilation,background_start)] = 2
-
-        dilation = binary_dilation(draw_contour,footprint=np.ones((2, 2)))
-        img = np.ones(slice.shape)
-        img[flood(dilation,background_start)] = 2
-        img[dilation] = 0
-
-        if np.count_nonzero(img==1) != 0:
-            new_image[filled_background==1] = 0
-            new_image[img==1] = 1
+        dilation = binary_dilation(draw_contour,footprint=np.ones((3, 3))).astype(int)
+        dilation[flood(dilation,background_start)] = 2
+        if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
+            # print("dilation 3")
+            # a region inside contour remains, so this dilation size works
+            # flip contour with region inside of it and put into the new image
+            new_image[dilation == 1] = 0
+            new_image[dilation == 0] = 1
             continue
 
-        dilation = binary_dilation(draw_contour,footprint=np.ones((1, 1)))
-        img = np.ones(slice.shape)
-        img[flood(dilation,background_start)] = 2
-        img[dilation] = 0
-
-        if np.count_nonzero(img==1) != 0:
-            new_image[filled_background==1] = 0
-            new_image[img==1] = 1
+        dilation = binary_dilation(draw_contour,footprint=np.ones((2,2))).astype(int)
+        dilation[flood(dilation,background_start)] = 2
+        if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
+            # print("dilation 2")
+            # a region inside contour remains, so this dilation size works
+            # flip contour with region inside of it and put into the new image
+            new_image[dilation == 1] = 0
+            new_image[dilation == 0] = 1
             continue
 
-        new_image[draw_contour==1] = 1
+        dilation = binary_dilation(draw_contour,footprint=np.ones((1,1))).astype(int)
+        dilation[flood(dilation,background_start)] = 2
+        if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
+            # print("dilation 1")
+            # a region inside contour remains, so this dilation size works
+            # flip contour with region inside of it and put into the new image
+            new_image[dilation == 1] = 0
+            new_image[dilation == 0] = 1
+            continue
+
+        # if no dilation works, we simply label contour itself
+        # print("no dilation, just take contour")
+        new_image[draw_contour == 1] = 1
+
+
+
+        # dilation = binary_dilation(draw_contour,footprint=np.ones((2, 2)))
+        # img = np.ones(slice.shape)
+        # img[flood(dilation,background_start)] = 2
+        # img[dilation] = 0
+        #
+        # if np.count_nonzero(img==1) != 0:
+        #     new_image[filled_background==1] = 0
+        #     new_image[img==1] = 1
+        #     continue
+        #
+        # dilation = binary_dilation(draw_contour,footprint=np.ones((1, 1)))
+        # img = np.ones(slice.shape)
+        # img[flood(dilation,background_start)] = 2
+        # img[dilation] = 0
+        #
+        # if np.count_nonzero(img==1) != 0:
+        #     new_image[filled_background==1] = 0
+        #     new_image[img==1] = 1
+        #     continue
+        #
+        # new_image[draw_contour==1] = 1
 
 
     return new_image
@@ -77,6 +110,8 @@ def convert_to_labels2d(slice):
     # return drawn_contours
 def automatic_contours(ground_truth):
     result = np.zeros(ground_truth.shape,dtype=bool)
+    # for index in range(len(ground_truth)):
+    #     result[index] = create_contour(ground_truth[index])
     target = int(len(ground_truth)/2)
     result[target] = create_contour(ground_truth[target])
     return result
