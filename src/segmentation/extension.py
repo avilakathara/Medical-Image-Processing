@@ -8,12 +8,20 @@ import nrrd
 import tkinter as tk
 from tkinter import filedialog
 from segmentation import *
+from skimage.morphology import binary_dilation
+from skimage.morphology import binary_erosion
+from skimage.segmentation import flood
+
 window = tk.Tk()
 window.withdraw()
 folder_path = filedialog.askdirectory()
 
 window.destroy()
-
+def dice_coefficient(mask1, mask2):
+    intersection = np.sum(mask1 * mask2)
+    total = np.sum(mask1) + np.sum(mask2)
+    dice = (2.0 * intersection) / total
+    return dice
 
 
 # INITIATE NAPARI
@@ -44,40 +52,47 @@ ground_truth[ground_truth != 0] = 1
 ground_truth = ground_truth.astype(int)
 
 
-approach = 4
+approach = 1
 
 # APPROACH 1
+# majority vote
 if approach == 1:
-    avr_prediction = np.around(np.sum(predictions,axis=0)/6).astype(int)
-    contours = []
-    for slice in avr_prediction:
-        contours.append(create_contour(slice))
-    contours = np.array(contours).astype(int)
-    seed_points = convert_to_labels(contours)
+    maj_vote = np.around(np.sum(predictions,axis=0)/len(predictions)).astype(int)
+    seed_points = np.zeros(maj_vote.shape)
+    for index,slice in enumerate(maj_vote):
+        dilated = binary_dilation(slice,footprint=np.ones((2,2)))
+        eroded = binary_erosion(slice,footprint=np.ones((2,2)))
+        indices = np.argwhere(dilated == 0)[0]
+        seed_points[index][flood(dilated,(indices[0],indices[1]))] = 2
+        seed_points[index][eroded == 1] = 1
+
+    # contours = []
+    # for slice in maj_vote:
+    #     contours.append(create_contour(slice))
+    # contours = np.array(contours).astype(int)
+    # seed_points = convert_to_labels(contours)
 
 # APPROACH 2
+# unanimous votes
 if approach == 2:
-    avr_prediction = np.sum(predictions,axis=0).astype(int)
-    avr_prediction[avr_prediction != 6] = 0
-    best_slice = 0
-    best_count = 0
-    for index,slice in enumerate(avr_prediction):
-        if np.count_nonzero(slice) > best_count:
-            best_count = np.count_nonzero(slice)
-            best_slice = index
-    seed_points = np.zeros(avr_prediction.shape).astype(int)
-    seed_points[best_slice] = avr_prediction[best_slice]
-    seed_points[best_slice][seed_points[best_slice] != 0] = 1
-    seed_points[best_slice][seed_points[best_slice] == 0] = 2
-
+    sum_pred = np.sum(predictions,axis=0).astype(int)
+    seed_points = np.zeros(sum_pred.shape)
+    seed_points[sum_pred == 0] = 2
+    seed_points[sum_pred == 6] = 1
 
 # APPROACH 3
-# unanimous votes
+# selected positive unanimous votes
 if approach == 3:
-    sum_predictions = np.sum(predictions,axis=0).astype(int)
-    seed_points = np.zeros(sum_predictions.shape)
-    seed_points[sum_predictions == 0] = 2
-    seed_points[sum_predictions == 6] = 1
+    sum_pred = np.sum(predictions,axis=0).astype(int)
+    seed_points = np.zeros(sum_pred.shape)
+    thres = 0.9
+    for index,slice in enumerate(sum_pred):
+        if np.count_nonzero(slice) == 0:
+            continue
+        if np.count_nonzero(slice==6)/np.count_nonzero(slice) > thres:
+            seed_points[index][slice==0] = 2
+            seed_points[index][slice==6] = 1
+
 
 # APPROACH 4
 # use baseline seeds
@@ -86,14 +101,14 @@ if approach == 4:
 
 # viewer.add_image(img, name="CT_SCAN", colormap="gray", interpolation2d="bicubic")
 viewer.add_image(img_ai, name="CT_SCAN AI", colormap="gray", interpolation2d="bicubic")
-# viewer.add_labels(seed_points.astype(int), name="seed points")
+viewer.add_labels(seed_points.astype(int), name="seed points")
 
 
 print("img shape: ",img_ai.shape,", seed_points shape: ",seed_points.shape,", predictions shape: ",predictions.shape)
-segmentation, prob = segment(img_ai,seed_points,pred = predictions)
+segmentation, prob = segment(img_ai,seed_points)
 viewer.add_labels(segmentation,name="segmentation")
 
-
+print(dice_coefficient(segmentation,ground_truth))
 
 
 def save_all_as_numpy():
@@ -126,6 +141,9 @@ def save_all_as_numpy():
                 img = sitk.ReadImage(img_path)
                 img_arr = sitk.GetArrayFromImage(img)
                 np.save(output.parent.joinpath("maskpred_"+str(i)+".npy"), img_arr)
+
+
+
 
 
 napari.run()

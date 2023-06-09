@@ -70,7 +70,6 @@ def convert_to_labels2d(slice):
             if slice[i,j] == 0:
                 background_start = (i,j)
                 break
-
     contours, hierarchy = cv.findContours(slice.astype(np.uint8), cv.RETR_EXTERNAL, cv.CHAIN_APPROX_NONE)
     for contour in contours:
         draw_contour = np.zeros(slice.shape)
@@ -251,6 +250,8 @@ def prediction_weights(predictions,spacing,eps):
          for ax in [2, 1, 0] if sum_preds.shape[ax] > 1], axis=0)
     weights -= np.min(weights)
     weights /= np.max(weights)
+    weights = weights**2
+    weights /= np.max(weights)
     return -weights + eps
 
 def modified_weights(data, spacing, beta, eps, multichannel):
@@ -277,10 +278,8 @@ def modified_weights(data, spacing, beta, eps, multichannel):
 
     weights = -weights
     pred_weights = prediction_weights(predictions,spacing,eps)
-    print(np.min(weights),np.max(weights),np.count_nonzero(weights))
-    print(np.min(pred_weights),np.max(pred_weights),np.count_nonzero(pred_weights))
-    w_1 = 0
-    w_2 = 1
+    w_1 = 0.5
+    w_2 = 0.5
     return w_1*weights + w_2*pred_weights
 
 
