@@ -160,7 +160,7 @@ def get_segmentation(viewer):
         seed_points = convert_to_labels(contours)
         seed_points[seed_points == 2] = 4
     else:
-        new_labeled_slice = convert_to_labels2d(contours).astype(int)
+        new_labeled_slice = convert_to_labels2d(contours, dil_size=3).astype(int)
         new_labeled_slice[new_labeled_slice == 2] = 4
         # if axis == "d1":
         #     # rotated_ground_truth = rotate(ground_truth, [0, 0, 1], 315)
@@ -169,12 +169,14 @@ def get_segmentation(viewer):
         #     seed_points = rotate(rotate_seed_points, normal, 315)
         #     viewer.add_labels(seed_points, name="seedpoints debug".format(iterations))
         if axis == "x":
-            print(seed_points.shape)
-            seed_points[point] = new_labeled_slice
+            seed_points[point][new_labeled_slice == 4] = 4
+            seed_points[point][new_labeled_slice == 1] = 1
         elif axis == "y":
-            seed_points[:, point, :] = new_labeled_slice
+            seed_points[:, point, :][new_labeled_slice == 4] = 4
+            seed_points[:, point, :][new_labeled_slice == 1] = 1
         elif axis == "z":
-            seed_points[:, :, point] = new_labeled_slice
+            seed_points[:, :, point][new_labeled_slice == 4] = 4
+            seed_points[:, :, point][new_labeled_slice == 1] = 1
         else:
             spo = seed_points
             viewer.add_labels(seed_points, name='seed points')
@@ -220,7 +222,7 @@ def user_check(viewer, discrete=True):
 
     # Find optimal slice
     # uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
-    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, False, False, False, True)
+    uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, True, True)
     axis = chosen_axis
 
     print("Iteration {} - MAX UNCERTAINTY at plane {} = {}".format(iterations, chosen_axis, point))
@@ -334,6 +336,21 @@ def on_press_s(viewer):
     # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
     user_check(viewer)
 
+threshold = 0.95
+dice = [0]
+prev_slices = []
+while(dice[-1] < threshold):
+    on_press_a(viewer)
+    on_press_s(viewer)
+    dice.append(dice_coefficient(segmentation,ground_truth))
+    slice_info = (normal[0]*point,normal[1]*point,normal[2]*point)
+    if slice_info in prev_slices:
+        break
+    prev_slices.append(slice_info)
+
+print(dice)
+viewer.add_labels(segmentation.astype(int),name='final segmentation')
+viewer.add_labels(ground_truth.astype(int),name='ground truth')
 
 # TODO: uncomment this code and use it to automate main, and delete key bindings
 # user_interaction = 0
