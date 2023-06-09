@@ -140,11 +140,11 @@ def create_contours(viewer):
             # contours_display[point] = contours
             # contours_display = true_img_rot_back(contours_display, normal, pad, shape)
         # np.save("contours", contours)
-        lw_layer = viewer.add_labels(contours_display, name='INPUT {}'.format(iterations), opacity=1.0)
+        # lw_layer = viewer.add_labels(contours_display, name='INPUT {}'.format(iterations), opacity=1.0)
     else:
         contours = automatic_contours(ground_truth)
         # np.save("contours", contours)
-        lw_layer = viewer.add_labels(contours, name='INPUT {}'.format(iterations), opacity=1.0)
+        # lw_layer = viewer.add_labels(contours, name='INPUT {}'.format(iterations), opacity=1.0)
 
 
 def replace_value3(array):
@@ -204,7 +204,7 @@ def get_segmentation(viewer):
         seed_points = convert_to_labels(contours)
         seed_points[seed_points == 2] = 4
     else:
-        new_labeled_slice = convert_to_labels2d(contours).astype(int)
+        new_labeled_slice = convert_to_labels2d(contours, dil_size=3).astype(int)
         new_labeled_slice[new_labeled_slice == 2] = 4
         # viewer.add_labels(new_labeled_slice, name='labeled slice')
         # if axis == "d1":
@@ -214,15 +214,17 @@ def get_segmentation(viewer):
         #     seed_points = rotate(rotate_seed_points, normal, 315)
         #     viewer.add_labels(seed_points, name="seedpoints debug".format(iterations))
         if axis == "x":
-            print(seed_points.shape)
-            seed_points[point] = new_labeled_slice
+            seed_points[point][new_labeled_slice == 4] = 4
+            seed_points[point][new_labeled_slice == 1] = 1
         elif axis == "y":
-            seed_points[:, point, :] = new_labeled_slice
+            seed_points[:, point, :][new_labeled_slice == 4] = 4
+            seed_points[:, point, :][new_labeled_slice == 1] = 1
         elif axis == "z":
-            seed_points[:, :, point] = new_labeled_slice
+            seed_points[:, :, point][new_labeled_slice == 4] = 4
+            seed_points[:, :, point][new_labeled_slice == 1] = 1
         else:
             spo = seed_points
-            viewer.add_labels(seed_points, name='seed points')
+            # viewer.add_labels(seed_points, name='seed points')
             rotate_seed_points, pad, shape = true_img_rot(seed_points, normal, True)
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
 
@@ -245,13 +247,13 @@ def get_segmentation(viewer):
             # seed_points[seed_points == 1] = 3
             # seed_points[seed_points == 2] = 3
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
-            viewer.add_labels(seed_points.astype(int), name='new seed points')
+            # viewer.add_labels(seed_points.astype(int), name='new seed points')
             rotate_seed_points, pad, shape = true_img_rot(seed_points, normal, True)
             slice = rotate_seed_points[point]
             # viewer.add_labels(new_labeled_slice, name='labeled slice after rotation')
 
     segmentation, probabilities = segment(img, seed_points)
-    seg_layer = viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
+    # seg_layer = viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
     print("Dice coeff is: {}".format(dice_coefficient(segmentation, ground_truth)))
 
 
@@ -277,7 +279,7 @@ def user_check(viewer, discrete=True):
     # uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
 
     if discrete:
-        uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, True, True, True)
+        uncertainty, point, normal, chosen_axis = discreet_get_optimal_slice(uncertainty_field, True, True, True)
         axis = chosen_axis
     else:
         uncertainty, point, normal, chosen_axis = get_optimal_slice(uncertainty_field)
@@ -302,7 +304,7 @@ def user_check(viewer, discrete=True):
         point = int(point[0])
         chosen_slice = image_rot[point]
 
-    chosen_layer = viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
+    # chosen_layer = viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
 
 
 def confirm_dialog(title, message):
@@ -378,6 +380,7 @@ def on_press_s(viewer):
     global lw_layer
     global seg_layer
     global chosen_layer
+    global seed_points
 
     try:
         viewer.layers.remove(lw_layer)
@@ -396,7 +399,25 @@ def on_press_s(viewer):
     get_segmentation(viewer)
     get_uncertainty_field(viewer)
     # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
-    user_check(viewer, False)
+    user_check(viewer)
+    # viewer.add_labels(segmentation.astype(int),name='segmentation')
+    # viewer.add_labels(seed_points.astype(int),name='seed points')
+
+threshold = 0.95
+dice = [0]
+prev_slices = []
+while(dice[-1] < threshold):
+    on_press_a(viewer)
+    on_press_s(viewer)
+    dice.append(dice_coefficient(segmentation,ground_truth))
+    slice_info = (normal[0]*point,normal[1]*point,normal[2]*point)
+    if slice_info in prev_slices:
+        break
+    prev_slices.append(slice_info)
+
+print(dice)
+viewer.add_labels(segmentation.astype(int),name='final segmentation')
+viewer.add_labels(ground_truth.astype(int),name='ground truth')
 
 # TODO: uncomment this code and use it to automate main, and delete key bindings
 # user_interaction = 0

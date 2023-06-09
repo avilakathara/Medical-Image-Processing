@@ -23,7 +23,7 @@ def convert_to_labels(drawn_contours, z_bound_down=-1, z_bound_up=-1):
     return drawn_contours
 
 
-def convert_to_labels2d(slice):
+def convert_to_labels2d(slice,dil_size=3):
     # drawn_contours = drawn_contours.astype(int)
     #
     # for index,slice in enumerate(drawn_contours):
@@ -45,40 +45,43 @@ def convert_to_labels2d(slice):
         draw_contour = np.zeros(slice.shape)
         for point in contour:
             draw_contour[point[0][1], point[0][0]] = 1
+        dilation_possible = False
+        for i in range(dil_size):
+            dilation = binary_dilation(draw_contour,footprint=np.ones((dil_size-i, dil_size-i))).astype(int)
+            dilation[flood(dilation,background_start)] = 2
+            if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
+                # print("dilation 3")
+                # a region inside contour remains, so this dilation size works
+                # flip contour with region inside of it and put into the new image
+                new_image[dilation == 1] = 0
+                new_image[dilation == 0] = 1
+                dilation_possible = True
+                break
 
-        dilation = binary_dilation(draw_contour,footprint=np.ones((3, 3))).astype(int)
-        dilation[flood(dilation,background_start)] = 2
-        if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
-            # print("dilation 3")
-            # a region inside contour remains, so this dilation size works
-            # flip contour with region inside of it and put into the new image
-            new_image[dilation == 1] = 0
-            new_image[dilation == 0] = 1
-            continue
-
-        dilation = binary_dilation(draw_contour,footprint=np.ones((2,2))).astype(int)
-        dilation[flood(dilation,background_start)] = 2
-        if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
-            # print("dilation 2")
-            # a region inside contour remains, so this dilation size works
-            # flip contour with region inside of it and put into the new image
-            new_image[dilation == 1] = 0
-            new_image[dilation == 0] = 1
-            continue
-
-        dilation = binary_dilation(draw_contour,footprint=np.ones((1,1))).astype(int)
-        dilation[flood(dilation,background_start)] = 2
-        if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
-            # print("dilation 1")
-            # a region inside contour remains, so this dilation size works
-            # flip contour with region inside of it and put into the new image
-            new_image[dilation == 1] = 0
-            new_image[dilation == 0] = 1
-            continue
+        # dilation = binary_dilation(draw_contour,footprint=np.ones((2,2))).astype(int)
+        # dilation[flood(dilation,background_start)] = 2
+        # if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
+        #     # print("dilation 2")
+        #     # a region inside contour remains, so this dilation size works
+        #     # flip contour with region inside of it and put into the new image
+        #     new_image[dilation == 1] = 0
+        #     new_image[dilation == 0] = 1
+        #     continue
+        #
+        # dilation = binary_dilation(draw_contour,footprint=np.ones((1,1))).astype(int)
+        # dilation[flood(dilation,background_start)] = 2
+        # if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
+        #     # print("dilation 1")
+        #     # a region inside contour remains, so this dilation size works
+        #     # flip contour with region inside of it and put into the new image
+        #     new_image[dilation == 1] = 0
+        #     new_image[dilation == 0] = 1
+        #     continue
 
         # if no dilation works, we simply label contour itself
         # print("no dilation, just take contour")
-        new_image[draw_contour == 1] = 1
+        if not dilation_possible:
+            new_image[draw_contour == 1] = 1
 
 
 
