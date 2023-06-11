@@ -33,6 +33,7 @@ viewer = napari.Viewer()
 img = np.load(folder_path + str("/") + os.listdir(folder_path)[0])
 structures = np.load(folder_path + str("/") + os.listdir(folder_path)[1]).astype(int)
 ground_truth = np.zeros(structures.shape).astype(int)
+print(folder_path)
 
 # CHOOSE ORGAN
 # 1=BrainStem,2=Chiasm,3=Mandible,4=OpticNerve_L,5=OpticNerve_R,6=Parotid_L,7=Parotid_R,8=Submandibular_L,9=Submandibular_R)
@@ -260,7 +261,9 @@ def get_segmentation(viewer):
 def get_uncertainty_field(viewer, draw=False):
     global uncertainty_field
     uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
-
+    folder_name = folder_path.rsplit('/',1)[-1]
+    np.save('C:/Users/jonas/Documents/git/Medical-Image-Processing/src/slice_select/uncertainty_fields/' + folder_name + '_o' + str(organ_choice) + '_i' + str(iterations), uncertainty_field)
+    print('uncertainty field saved')
     if draw:
         viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray",
                          interpolation2d="bicubic")
@@ -471,3 +474,4 @@ napari.run()
 #     user_check(viewer)
 #
 #     sim -= 1
+print('end')

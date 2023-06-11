@@ -4,6 +4,9 @@ import matplotlib.pyplot as plt
 
 
 # takes the uncertainty field and returns the plane (slice) with the highest uncertainty
+from src.slice_select.cost import cost_using_normal
+
+
 def optimization():
     return
 
@@ -69,8 +72,8 @@ def gradient_descent(uncertainty, start_pos, start_normal, point_step_size, norm
     current_pos = start_pos
     unrounded_pos = start_pos.astype(float)
     current_normal = start_normal
-
-    for i in range(150):
+    costs = []
+    for i in range(30):
         # Update the point position based on equation 8
         gradient, indexes, uv_indexes, a, b = get_point_gradient(uncertainty, current_pos, current_normal, gradients)
 
@@ -107,11 +110,12 @@ def gradient_descent(uncertainty, start_pos, start_normal, point_step_size, norm
         current_normal += normal_step_size * normal_update
         current_normal /= np.linalg.norm(current_normal)
 
-        #print("current gradient: " + str(gradient))
-        #print("current point: " + str(current_pos))
         #print("current normal: " + str(current_normal))
+        #print("current point: " + str(current_pos))
+        #print("current gradient: " + str(gradient))
+        costs.append(cost_using_normal(uncertainty, current_pos, current_normal))
 
-    return current_pos, current_normal
+    return current_pos, current_normal, costs
 
 
 # indexes are the xyz coordinates of points that belong to the plane
@@ -147,7 +151,7 @@ def get_point_gradient(uncertainty, point, current_normal, gradients):
     # Get the plane in relation to the x and normal
     # indexes = get_indexes_in_plane(uncertainty, point, current_normal, 0.00001)
     uv_indexes, indexes, a, b = get_indices(current_normal, point, uncertainty)
-
+    indexes = indexes.astype(np.int16)
     gradient_plane = gradients[:, indexes[:, 0], indexes[:, 1], indexes[:, 2]]
 
     # sum up the planes to get three sums
