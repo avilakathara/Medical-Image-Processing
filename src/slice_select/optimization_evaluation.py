@@ -1,11 +1,45 @@
 import os
-
 import numpy as np
 import matplotlib.pyplot as plt
 from src.slice_select.cost import cost
+from src.slice_select.lbfgs import lbfgs
 from src.slice_select.optimization import get_optimal_slice, get_gradients, random_plane_normal, gradient_descent
 from src.slice_select.pso import particle_swarm_optimization
 import datetime
+
+
+def evaluate_lbfgs(max_iterations):
+    print(datetime.datetime.now())
+    folder_name = 'uncertainty_fields'
+    test_paths = os.listdir(folder_name)
+    test_arrs = []
+    for path in test_paths:
+        if path.endswith('.npy'):
+            print(folder_name + '/' + path)
+            test_arrs.append(np.load(folder_name + '/' + path))
+
+    lbfgs_scores = np.empty((0,max_iterations), float)
+    for test_arr in test_arrs:
+        for i in range(30):
+            print("initialization {}".format(i))
+
+            costs = lbfgs(test_arr, max_iterations)
+
+            costs = np.pad(np.array(costs), (0, max_iterations - len(costs)), 'edge')
+            lbfgs_scores = np.append(lbfgs_scores, [costs], axis=0)
+            print(lbfgs_scores)
+
+
+
+    lbfgs_average = np.mean(lbfgs_scores, axis=0)
+
+    plt.plot(lbfgs_average)
+    print(lbfgs_scores.shape)
+    print(lbfgs_average)
+    plt.title('l-bfgs-b')
+
+    plt.show()
+    print(datetime.datetime.now())
 
 
 def evaluate_gd(point_step_size=0.5, normal_step_size=0.02):
@@ -63,5 +97,5 @@ def find_step_sizes():
 
 
 if __name__ == "__main__":
-    #find_step_sizes()
-    evaluate_gd(0.1, 0.0001)
+    # find_step_sizes()
+    evaluate_lbfgs(20)
