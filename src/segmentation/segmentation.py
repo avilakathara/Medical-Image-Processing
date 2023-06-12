@@ -113,9 +113,16 @@ def convert_to_labels2d(slice,dil_size=3):
     # return drawn_contours
 def automatic_contours(ground_truth):
     result = np.zeros(ground_truth.shape,dtype=bool)
-    # for index in range(len(ground_truth)):
-    #     result[index] = create_contour(ground_truth[index])
     target = int(len(ground_truth)/2)
+
+    for i in range(target):
+        if np.count_nonzero(ground_truth[target-i]) > 0:
+            target = target - i
+            break
+        if np.count_nonzero(ground_truth[target+i]) > 0:
+            target = target+i
+            break
+
     result[target] = create_contour(ground_truth[target])
     return result
 
