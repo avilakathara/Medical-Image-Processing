@@ -54,7 +54,7 @@ def convert_to_labels(drawn_contours, z_bound_down=-1, z_bound_up=-1):
     return drawn_contours
 
 
-def convert_to_labels2d(slice):
+def convert_to_labels2d(slice,dil_size=3):
     # drawn_contours = drawn_contours.astype(int)
     #
     # for index,slice in enumerate(drawn_contours):
@@ -75,32 +75,43 @@ def convert_to_labels2d(slice):
         draw_contour = np.zeros(slice.shape)
         for point in contour:
             draw_contour[point[0][1], point[0][0]] = 1
+        dilation_possible = False
+        for i in range(dil_size):
+            dilation = binary_dilation(draw_contour,footprint=np.ones((dil_size-i, dil_size-i))).astype(int)
+            dilation[flood(dilation,background_start)] = 2
+            if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
+                # print("dilation 3")
+                # a region inside contour remains, so this dilation size works
+                # flip contour with region inside of it and put into the new image
+                new_image[dilation == 1] = 0
+                new_image[dilation == 0] = 1
+                dilation_possible = True
+                break
 
-        dilation = binary_dilation(draw_contour,footprint=np.ones((3, 3)))
-        filled_background = np.ones(slice.shape)
-        filled_background[flood(dilation,background_start)] = 2
+        # dilation = binary_dilation(draw_contour,footprint=np.ones((2,2))).astype(int)
+        # dilation[flood(dilation,background_start)] = 2
+        # if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
+        #     # print("dilation 2")
+        #     # a region inside contour remains, so this dilation size works
+        #     # flip contour with region inside of it and put into the new image
+        #     new_image[dilation == 1] = 0
+        #     new_image[dilation == 0] = 1
+        #     continue
+        #
+        # dilation = binary_dilation(draw_contour,footprint=np.ones((1,1))).astype(int)
+        # dilation[flood(dilation,background_start)] = 2
+        # if np.count_nonzero(dilation) < len(dilation)*len(dilation[0]):
+        #     # print("dilation 1")
+        #     # a region inside contour remains, so this dilation size works
+        #     # flip contour with region inside of it and put into the new image
+        #     new_image[dilation == 1] = 0
+        #     new_image[dilation == 0] = 1
+        #     continue
 
-        dilation = binary_dilation(draw_contour,footprint=np.ones((2, 2)))
-        img = np.ones(slice.shape)
-        img[flood(dilation,background_start)] = 2
-        img[dilation] = 0
-
-        if np.count_nonzero(img==1) != 0:
-            new_image[filled_background==1] = 0
-            new_image[img==1] = 1
-            continue
-
-        dilation = binary_dilation(draw_contour,footprint=np.ones((1, 1)))
-        img = np.ones(slice.shape)
-        img[flood(dilation,background_start)] = 2
-        img[dilation] = 0
-
-        if np.count_nonzero(img==1) != 0:
-            new_image[filled_background==1] = 0
-            new_image[img==1] = 1
-            continue
-
-        new_image[draw_contour==1] = 1
+        # if no dilation works, we simply label contour itself
+        # print("no dilation, just take contour")
+        if not dilation_possible:
+            new_image[draw_contour == 1] = 1
 
 
     return new_image
@@ -109,6 +120,15 @@ def convert_to_labels2d(slice):
 def automatic_contours(ground_truth):
     result = np.zeros(ground_truth.shape,dtype=bool)
     target = int(len(ground_truth)/2)
+
+    for i in range(target):
+        if np.count_nonzero(ground_truth[target-i]) > 0:
+            target = target - i
+            break
+        if np.count_nonzero(ground_truth[target+i]) > 0:
+            target = target+i
+            break
+
     result[target] = create_contour(ground_truth[target])
     return result
 
@@ -129,10 +149,9 @@ def segment(image, seed_points, pred = None):
         predictions = pred
         rw._compute_weights_3d = modified_weights
 
-    print("Generating segment...")
     seed_points = seed_points.astype(int)
     start_time = time.time()
-    prob = rw.random_walker(image, seed_points.astype(int), beta=0.1, mode='cg_j',tol=0.1, copy=False, return_full_prob=True)
+    prob = rw.random_walker(image, seed_points.astype(int), beta=20, mode='cg_j',tol=0.1, copy=False, return_full_prob=True)
     # print(time.time() - start_time, "seconds")
 
     labels = np.zeros(image.shape).astype(int)
@@ -243,19 +262,14 @@ def image_rotate_back(image, normal):
     #     rotated_image = rot(rotated_image, axis, angle)
 
     return rotated_image
-def prediction_weights(predictions,spacing,eps):
+def prediction_weights(predictions,data, spacing, beta, eps, multichannel):
     sum_preds = np.sum(predictions,axis=0)
-    weights = np.concatenate(
-        [np.diff(sum_preds, axis=ax).ravel() / spacing[ax]
-         for ax in [2, 1, 0] if sum_preds.shape[ax] > 1], axis=0)
-    weights -= np.min(weights)
-    weights /= np.max(weights)
-    weights = weights**2
-    weights /= np.max(weights)
-    return -weights + eps
+    data = np.zeros(data.shape)
+    for i in range(len(sum_preds)):
+        for j in range(len(sum_preds[0])):
+            for k in range(len(sum_preds[0][0])):
+                data[i,j,k,0] = sum_preds[i,j,k]
 
-def modified_weights(data, spacing, beta, eps, multichannel):
-    global predictions
     # Weight calculation is main difference in multispectral version
     # Original gradient**2 replaced with sum of gradients ** 2
     gradients = np.concatenate(
@@ -277,10 +291,41 @@ def modified_weights(data, spacing, beta, eps, multichannel):
     weights += eps
 
     weights = -weights
-    pred_weights = prediction_weights(predictions,spacing,eps)
+    return weights
+
+def modified_weights(data, spacing, beta, eps, multichannel):
+    global predictions
+    sum_preds = np.sum(predictions,axis=0)
+    data = np.zeros(data.shape)
+    for i in range(len(sum_preds)):
+        for j in range(len(sum_preds[0])):
+            for k in range(len(sum_preds[0][0])):
+                data[i,j,k,0] = sum_preds[i,j,k]
+
+    # Weight calculation is main difference in multispectral version
+    # Original gradient**2 replaced with sum of gradients ** 2
+    gradients = np.concatenate(
+        [np.diff(data[..., 0], axis=ax).ravel() / spacing[ax]
+         for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
+
+    for channel in range(1, data.shape[-1]):
+        gradients += np.concatenate(
+            [np.diff(data[..., channel], axis=ax).ravel() / spacing[ax]
+             for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
+
+    # All channels considered together in this standard deviation
+    scale_factor = -beta / (10 * data.std())
+    if multichannel:
+        # New final term in beta to give == results in trivial case where
+        # multiple identical spectra are passed.
+        scale_factor /= np.sqrt(data.shape[-1])
+    weights = np.exp(scale_factor * gradients)
+    weights += eps
+
+    weights = -weights
+    pred_weights = prediction_weights(predictions,data, spacing, beta, eps, multichannel)
     w_1 = 0.5
     w_2 = 0.5
     return w_1*weights + w_2*pred_weights
 
 
-# segmentation, prob = segment(img,convert_to_labels(automatic_contours(ground_truth)))
