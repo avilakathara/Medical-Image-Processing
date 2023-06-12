@@ -73,7 +73,7 @@ def gradient_descent(uncertainty, start_pos, start_normal, point_step_size, norm
     unrounded_pos = start_pos.astype(float)
     current_normal = start_normal
     costs = []
-    for i in range(30):
+    for i in range(150):
         # Update the point position based on equation 8
         gradient, indexes, uv_indexes, a, b = get_point_gradient(uncertainty, current_pos, current_normal, gradients)
 
@@ -150,7 +150,7 @@ def get_normal_update(normal, gradients, indexes, uv_indexes, a, b):
 def get_point_gradient(uncertainty, point, current_normal, gradients):
     # Get the plane in relation to the x and normal
     # indexes = get_indexes_in_plane(uncertainty, point, current_normal, 0.00001)
-    uv_indexes, indexes, a, b = get_indices(current_normal, point, uncertainty)
+    uv_indexes, indexes, a, b = get_indices_new(current_normal, point, uncertainty)
     indexes = indexes.astype(np.int16)
     gradient_plane = gradients[:, indexes[:, 0], indexes[:, 1], indexes[:, 2]]
 
@@ -162,33 +162,29 @@ def get_point_gradient(uncertainty, point, current_normal, gradients):
 
 # Input: -a normal and reference point that define a plane
 #        -a 3D array of uncertainties TODO: can be replaced by just its shape?
-# Returns indices of
-def get_indices(normal, point, uncertainty):
-    # calculate normalized vectors orthogonal to the plane's normal
-    normal, a, b = get_orthonormal_vectors(normal)
-    # set the maximum values for a and b to iterate over
-    # TODO the current max sizes are overestimates, can we make it smaller, is that even necessary?
-    max_axis_size = np.max(uncertainty.shape) * 2
-    # print("Max axis size: {}".format(max_axis_size))
-    max_u = max_axis_size
-    max_v = max_axis_size
-    min_u = -max_axis_size
-    min_v = -max_axis_size
+# Returns coordinates of point in plane, coordinates of point in uncertainty volume and the orthonormal vectors
+# defining the plane.
+def get_indices_new(normal, point, uncertainty):
+    size = uncertainty.shape
 
-    ab_array = []
-    xyz_array = []
-    # iterate over all possible a and b values
-    for u in range(min_u, max_u):
-        for v in range(min_v, max_v):
-            # calculate the xyz coordinate as a linear combination of u and v, offset by the reference point
-            xyz = point + (u * a + v * b).astype(np.int16)
-            # check whether the calculated point falls within the uncertainty field
-            if not (xyz[0] < 0 or xyz[1] < 0 or xyz[2] < 0 or xyz[0] >= uncertainty.shape[0] or
-                    xyz[1] >= uncertainty.shape[1] or xyz[2] >= uncertainty.shape[2]):
-                # matching (a,b) and (x,y,z) point will have the same index in the two arrays
-                ab_array.append([u, v])
-                xyz_array.append(xyz)
-    return np.array(ab_array), np.array(xyz_array), a, b
+    largest_distance = int(np.linalg.norm(size))
+
+    indices = np.arange(-largest_distance, largest_distance + 1)
+
+    row_indices, col_indices = np.meshgrid(indices, indices, indexing='ij')
+
+    normal, a, b = get_orthonormal_vectors(normal)
+    uv_indices = np.stack(np.meshgrid(indices, indices), axis=-1).reshape(-1, 2)
+
+    coordinate_matrix = row_indices[:, :, np.newaxis] * b + col_indices[:, :, np.newaxis] * a
+    coordinates = np.reshape(coordinate_matrix, (-1, 3)) + point
+    coordinates = coordinates.astype(np.int16)
+    mask = np.all((coordinates >= np.array([0, 0, 0])) & (coordinates < size), axis=1)
+    xyz_array = coordinates[mask]
+    uv_array = uv_indices[mask]
+
+    return uv_array, xyz_array, a, b
+
 
 
 def get_indexes_in_plane(array, position, normal, tolerance):

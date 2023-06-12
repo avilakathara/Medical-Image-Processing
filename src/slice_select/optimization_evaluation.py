@@ -18,7 +18,7 @@ def evaluate_lbfgs(max_iterations):
             print(folder_name + '/' + path)
             test_arrs.append(np.load(folder_name + '/' + path))
 
-    lbfgs_scores = np.empty((0,max_iterations), float)
+    lbfgs_scores = np.empty((0, max_iterations), float)
     for test_arr in test_arrs:
         for i in range(30):
             print("initialization {}".format(i))
@@ -28,8 +28,6 @@ def evaluate_lbfgs(max_iterations):
             costs = np.pad(np.array(costs), (0, max_iterations - len(costs)), 'edge')
             lbfgs_scores = np.append(lbfgs_scores, [costs], axis=0)
             print(lbfgs_scores)
-
-
 
     lbfgs_average = np.mean(lbfgs_scores, axis=0)
 
@@ -65,21 +63,31 @@ def evaluate_gd(point_step_size=0.5, normal_step_size=0.02):
     # pso_average = np.mean(pso_scores, axis=0)
     # plt.plot(pso_average)
     gd_scores = []
-    for test_arr in test_arrs:
+
+    for array_index, test_arr in enumerate(test_arrs):
+
+        if array_index >= 1:
+            break
         gradients = get_gradients(test_arr)
 
         for i in range(3):
-            print("initialization {}".format(i))
+            print("----------------------------------------")
+            print("array {}, initialization {}".format(array_index, i))
             start_pos = np.random.uniform(np.zeros(3), test_arr.shape)
             start_normal = random_plane_normal()
+            print("start normal:")
+            print(start_normal)
+
 
             current_pos, current_normal, costs = gradient_descent(test_arr, start_pos, start_normal, point_step_size,
                                                                   normal_step_size, gradients)
+            print("end normal:")
+            print(current_normal)
             gd_scores.append(costs)
 
     gd_scores = np.array(gd_scores)
     gd_average = np.mean(gd_scores, axis=0)
-    np.save('graph_data/gd_pss{}_nss{}'.format(point_step_size, normal_step_size), gd_average)
+    # np.save('graph_data/gd_pss{}_nss{}'.format(point_step_size, normal_step_size), gd_average)
     plt.plot(gd_average)
     plt.title('gradient descent with pss {} and nss {}'.format(point_step_size, normal_step_size))
 
@@ -88,8 +96,8 @@ def evaluate_gd(point_step_size=0.5, normal_step_size=0.02):
 
 
 def find_step_sizes():
-    point_step_sizes = [1, 0.5, 0.25, 0.0625, 0, -0.0625, -0.25, -0.5, -1]
-    normal_step_sizes = [0.5, 0.25, 0.1, 0.04, 0.001, 0, -0.001, -0.01, -0.04, -0.25, -0.5]
+    point_step_sizes = [0.05]
+    normal_step_sizes = [1e-5, 0.0]
     for point_step_size in point_step_sizes:
         for normal_step_size in normal_step_sizes:
             print('point step size {}, normal step size {}'.format(point_step_size, normal_step_size))
@@ -97,5 +105,6 @@ def find_step_sizes():
 
 
 if __name__ == "__main__":
-    # find_step_sizes()
-    evaluate_lbfgs(20)
+    #find_step_sizes()
+    evaluate_gd(0.0, 1e-5)
+    # evaluate_lbfgs(20)
