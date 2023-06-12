@@ -259,8 +259,8 @@ def get_segmentation(viewer):
 
 def get_uncertainty_field(viewer, draw=False):
     global uncertainty_field
+    uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
     # # uncomment this if you want to store uncertainty fields to a file
-    # uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
     # folder_name = folder_path.rsplit('/',1)[-1]
     # np.save('C:/Users/jonas/Documents/git/Medical-Image-Processing/src/slice_select/uncertainty_fields/' + folder_name + '_o' + str(organ_choice) + '_i' + str(iterations), uncertainty_field)
     # print('uncertainty field saved')
