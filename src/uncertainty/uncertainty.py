@@ -20,7 +20,6 @@ def calculate_uncertainty_fields(image, label, prob):
     @return:        3D uncertainty field for each voxels, for each labels
     """
 
-    print("Calculating uncertainty fields...")
 
     # get image size; ps is the number of label types
     ps, px, py, pz = prob.shape

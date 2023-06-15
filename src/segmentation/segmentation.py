@@ -40,9 +40,9 @@ now = datetime.now()
 # organ_choice = 3
 # ground_truth[structures == organ_choice] = 1
 
-
 predictions = None
-
+global weight
+weight = None
 
 def convert_to_labels(drawn_contours, z_bound_down=-1, z_bound_up=-1):
     drawn_contours = drawn_contours.astype(int)
@@ -143,17 +143,19 @@ def create_contour(ground_truth):
             result[point[0][1], point[0][0]] = True
     return result
 
-def segment(image, seed_points, pred = None):
+def segment(image, seed_points, pred = None, w = None):
     global predictions
+    global weight
+    rw._compute_weights_3d = modified_weights
+
     if pred is not None:
         predictions = pred
-        rw._compute_weights_3d = modified_weights
-
+        weight = w
+    else:
+        weight = None
+        predictions = None
     seed_points = seed_points.astype(int)
-    start_time = time.time()
-    prob = rw.random_walker(image, seed_points.astype(int), beta=20, mode='cg_j',tol=0.1, copy=False, return_full_prob=True)
-    # print(time.time() - start_time, "seconds")
-
+    prob = rw.random_walker(image, seed_points.astype(int), beta=20, mode='cg_j',tol=000.1, copy=False, return_full_prob=True)
     labels = np.zeros(image.shape).astype(int)
     labels[prob[0]>=0.5] = 1
     return labels, prob
@@ -263,7 +265,7 @@ def image_rotate_back(image, normal):
 
     return rotated_image
 def prediction_weights(predictions,data, spacing, beta, eps, multichannel):
-    sum_preds = np.sum(predictions,axis=0)
+    sum_preds = np.sum(predictions,axis=0)/len(predictions)
     data = np.zeros(data.shape)
     for i in range(len(sum_preds)):
         for j in range(len(sum_preds[0])):
@@ -281,6 +283,7 @@ def prediction_weights(predictions,data, spacing, beta, eps, multichannel):
             [np.diff(data[..., channel], axis=ax).ravel() / spacing[ax]
              for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
 
+    # gradients = gradients ** 2
     # All channels considered together in this standard deviation
     scale_factor = -beta / (10 * data.std())
     if multichannel:
@@ -292,15 +295,68 @@ def prediction_weights(predictions,data, spacing, beta, eps, multichannel):
 
     weights = -weights
     return weights
+def bram(arr,axis):
+    result = []
+    shape = (arr.shape[1],arr.shape[2])
+    if axis == 1:
+        shape = (arr.shape[0],arr.shape[2])
+    if axis == 2:
+        shape = (arr.shape[0],arr.shape[1])
 
-def modified_weights(data, spacing, beta, eps, multichannel):
-    global predictions
-    sum_preds = np.sum(predictions,axis=0)
+    for index in range(1,arr.shape[axis]):
+        array = np.zeros(shape)
+        for i in range(shape[0]):
+            for j in range(shape[1]):
+                if axis == 0:
+                    v1,v2 = arr[index,i,j],arr[index-1,i,j]
+                elif axis == 1:
+                    v1,v2 = arr[i,index,j],arr[i,index-1,j]
+                else:
+                    v1,v2 = arr[i,j,index],arr[i,j,index-1]
+
+                if (v1 == 0 or v1 == 1) and (v2 == 0 or v2 == 1):
+                    array[i,j] = (v1-v2)
+                else:
+                    array[i,j] = 0.5
+        result.append(array)
+    return np.array(result)
+def prediction_weights2(predictions,data, spacing, beta, eps, multichannel):
+    sum_preds = np.sum(predictions,axis=0)/len(predictions)
     data = np.zeros(data.shape)
     for i in range(len(sum_preds)):
         for j in range(len(sum_preds[0])):
             for k in range(len(sum_preds[0][0])):
                 data[i,j,k,0] = sum_preds[i,j,k]
+
+    # Weight calculation is main difference in multispectral version
+    # Original gradient**2 replaced with sum of gradients ** 2
+    gradients = np.concatenate(
+        [bram(data[..., 0], ax).ravel() / spacing[ax]
+         for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0)
+
+    for channel in range(1, data.shape[-1]):
+        gradients += np.concatenate(
+            [bram(data[..., channel], ax).ravel() / spacing[ax]
+             for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0)
+    gradients = gradients ** 2
+    # All channels considered together in this standard deviation
+    scale_factor = -beta / (10 * data.std())
+    # if multichannel:
+    #     # New final term in beta to give == results in trivial case where
+    #     # multiple identical spectra are passed.
+    #     scale_factor /= np.sqrt(data.shape[-1])
+    weights = np.exp(scale_factor * gradients)
+    weights += eps
+
+    weights = -weights
+    return weights
+
+def modified_weights(data, spacing, beta, eps, multichannel):
+    global predictions
+    global weight
+    # if predictions is not None:
+    #     # use weight as new beta value
+    #     return prediction_weights2(predictions,data,spacing,weight,eps,multichannel)
 
     # Weight calculation is main difference in multispectral version
     # Original gradient**2 replaced with sum of gradients ** 2
@@ -323,9 +379,11 @@ def modified_weights(data, spacing, beta, eps, multichannel):
     weights += eps
 
     weights = -weights
-    pred_weights = prediction_weights(predictions,data, spacing, beta, eps, multichannel)
-    w_1 = 0.5
-    w_2 = 0.5
-    return w_1*weights + w_2*pred_weights
+    if predictions is None:
+        return weights
+    pred_weights1 = prediction_weights(predictions,data, spacing, beta, eps, multichannel)
+    pred_weights2 = prediction_weights2(predictions,data, spacing, beta, eps, multichannel)
+
+    return weight[0]*weights + weight[1]*pred_weights1 + weight[2]*pred_weights2
 
 

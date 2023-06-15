@@ -25,6 +25,70 @@ window.withdraw()
 folder_path = filedialog.askdirectory()
 
 window.destroy()
+# def get_bbox(img,ground_truth):
+#     z = np.any(ground_truth, axis=(1, 2))
+#     y = np.any(ground_truth, axis=(0, 2))
+#     x = np.any(ground_truth, axis=(0, 1))
+#     zmin, zmax = np.where(z)[0][[0, -1]]
+#     ymin, ymax = np.where(y)[0][[0, -1]]
+#     xmin, xmax = np.where(x)[0][[0, -1]]
+#     z_offset = 1
+#     xy_offset = 10
+#     zmin = max(0, zmin - z_offset)
+#     ymin = max(0, ymin - xy_offset)
+#     xmin = max(0, xmin - xy_offset)
+#     zmax = min(len(img), zmax + z_offset + 1)
+#     ymax = min(len(img[0]), ymax + xy_offset + 1)
+#     xmax = min(len(img[0][0]), xmax + xy_offset + 1)
+#     return zmin,zmax,ymin,ymax,xmin,xmax
+# # PROMPT TO SELECT FILE
+# def load(chosen_organ,folder_path = None):
+#     global predictions
+#     if folder_path is None:
+#         window = tk.Tk()
+#         window.withdraw()
+#         folder_path = filedialog.askdirectory()
+#         window.destroy()
+#     # img = np.load(folder_path.joinpath("img_ai.npy"))
+#     # predictions = []
+#     # for i in range(2,8):
+#     #     prediction = np.load(folder_path + str("/") + os.listdir(folder_path)[i])
+#     #     prediction[prediction != chosen_organ] = 0
+#     #     prediction[prediction != 0] = 1
+#     #     predictions.append(prediction.astype(int))
+#     # predictions = np.array(predictions)
+#     # ground_truth = np.load(folder_path + str("/") + os.listdir(folder_path)[9])
+#     # ground_truth[ground_truth != chosen_organ] = 0
+#     # ground_truth[ground_truth != 0] = 1
+#     # ground_truth = ground_truth.astype(int)
+#     # return img,ground_truth
+#     img = np.load(folder_path.joinpath("img_ai.npy"))
+#     ground_truth = np.load(folder_path.joinpath("structures_ai.npy")).astype(int)
+#     predictions = []
+#     for i in range(1,7):
+#         prediction = np.load(folder_path.joinpath("maskpred_"+str(i)+".npy"))
+#         prediction[prediction != chosen_organ] = 0
+#         prediction[prediction != 0] = 1
+#         predictions.append(prediction.astype(int))
+#     predictions = np.array(predictions)
+#     ground_truth[ground_truth != chosen_organ] = 0
+#     ground_truth[ground_truth != 0] = 1
+#     ground_truth = ground_truth.astype(int)
+#
+#     zmin,zmax,ymin,ymax,xmin,xmax = get_bbox(img,ground_truth)
+#     predictions = predictions[:,zmin:zmax,ymin:ymax,xmin:xmax]
+#     img = img[zmin:zmax, ymin:ymax, xmin:xmax]
+#     ground_truth = ground_truth[zmin:zmax, ymin:ymax, xmin:xmax]
+#     # seed_points = convert_to_labels(automatic_contours(ground_truth))
+#     # segmentation, prob = segment(img,seed_points,pred=predictions)
+#     #
+#     # if show:
+#     #     viewer = napari.Viewer()
+#     #     viewer.add_image(img, name="CT_SCAN", colormap="gray", interpolation2d="bicubic")
+#     #     viewer.add_labels(segmentation.astype(int),name='segmentation')
+#     #     viewer.add_labels(ground_truth.astype(int),name='ground truth')
+#     return img,ground_truth
+
 
 # INITIATE NAPARI
 viewer = napari.Viewer()
@@ -57,6 +121,11 @@ xmax = min(len(img[0][0]), xmax + xy_offset + 1)
 
 img = img[zmin:zmax, ymin:ymax, xmin:xmax]
 ground_truth = ground_truth[zmin:zmax, ymin:ymax, xmin:xmax]
+
+# LOAD ALL
+# global predictions
+# predictions = None
+# img, ground_truth = load(1)
 
 # SHOW IMAGES
 viewer.add_image(img, name="CT_SCAN", colormap="gray", interpolation2d="bicubic")
@@ -139,11 +208,11 @@ def create_contours(viewer):
             # contours_display[point] = contours
             # contours_display = true_img_rot_back(contours_display, normal, pad, shape)
         # np.save("contours", contours)
-        lw_layer = viewer.add_labels(contours_display, name='INPUT {}'.format(iterations), opacity=1.0)
+        # lw_layer = viewer.add_labels(contours_display, name='INPUT {}'.format(iterations), opacity=1.0)
     else:
         contours = automatic_contours(ground_truth)
         # np.save("contours", contours)
-        lw_layer = viewer.add_labels(contours, name='INPUT {}'.format(iterations), opacity=1.0)
+        # lw_layer = viewer.add_labels(contours, name='INPUT {}'.format(iterations), opacity=1.0)
 
 
 def get_segmentation(viewer):
@@ -179,7 +248,7 @@ def get_segmentation(viewer):
             seed_points[:, :, point][new_labeled_slice == 1] = 1
         else:
             spo = seed_points
-            viewer.add_labels(seed_points, name='seed points')
+            # viewer.add_labels(seed_points, name='seed points')
             rotate_seed_points, pad, shape = true_img_rot(seed_points, normal, True)
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
             rotate_seed_points[point] = new_labeled_slice.astype(float)
@@ -196,7 +265,7 @@ def get_segmentation(viewer):
             #seed_points[seed_points == 1] = 3
             #seed_points[seed_points == 2] = 3
             print(np.min(seed_points), np.max(seed_points), np.mean(seed_points))
-            viewer.add_labels(seed_points.astype(int), name='new seed points')
+            # viewer.add_labels(seed_points.astype(int), name='new seed points')
 
     segmentation, probabilities = segment(img, seed_points)
     seg_layer = viewer.add_labels(segmentation, name="Segmentation {}".format(iterations))
@@ -237,7 +306,7 @@ def user_check(viewer, discrete=True):
         image_rot, pad, shape = true_img_rot(img, normal)
         chosen_slice = image_rot[point]
 
-    chosen_layer = viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
+    # chosen_layer = viewer.add_image(chosen_slice, name="chosen_slice", colormap="gray", interpolation2d="bicubic")
 
 
 def confirm_dialog(title, message):
@@ -259,7 +328,7 @@ def on_press_a(viewer):
         pass
     create_contours(viewer)
 
-    viewer.add_labels(contours.astype(int), name='contours')
+    # viewer.add_labels(contours.astype(int), name='contours')
     # contours = contours.astype(float)
     # normal = np.array([0.707, 0.707, 0])
     # contours, pad, shape = true_img_rot(contours,normal)
@@ -339,18 +408,22 @@ def on_press_s(viewer):
 threshold = 0.95
 dice = [0]
 prev_slices = []
+count = 0
 while(dice[-1] < threshold):
     on_press_a(viewer)
     on_press_s(viewer)
     dice.append(dice_coefficient(segmentation,ground_truth))
     slice_info = (normal[0]*point,normal[1]*point,normal[2]*point)
+    print("hoi ik ben bram: dice is"+str(dice[-1]))
+    if count ==3:
+        break
     if slice_info in prev_slices:
         break
     prev_slices.append(slice_info)
 
 print(dice)
-viewer.add_labels(segmentation.astype(int),name='final segmentation')
-viewer.add_labels(ground_truth.astype(int),name='ground truth')
+# viewer.add_labels(segmentation.astype(int),name='final segmentation')
+# viewer.add_labels(ground_truth.astype(int),name='ground truth')
 
 # TODO: uncomment this code and use it to automate main, and delete key bindings
 # user_interaction = 0
@@ -376,7 +449,7 @@ viewer.add_labels(ground_truth.astype(int),name='ground truth')
 # print(user_interaction)
 
 # INITIATE
-napari.run()
+# napari.run()
 
 # while(sim > 0):
 #     try:
