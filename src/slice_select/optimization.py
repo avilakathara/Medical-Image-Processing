@@ -67,13 +67,13 @@ def get_optimal_slice(uncertainty):
 
 
 # Start pos is of type [x,y,z]
-def gradient_descent(uncertainty, start_pos, start_normal, point_step_size, normal_step_size, gradients):
+def gradient_descent(uncertainty, start_pos, start_normal, point_step_size, normal_step_size, gradients, it=150):
     m_x, m_y, m_z = uncertainty.shape
     current_pos = start_pos
     unrounded_pos = start_pos.astype(float)
     current_normal = start_normal
     costs = []
-    for i in range(150):
+    for i in range(it):
         # Update the point position based on equation 8
         gradient, indexes, uv_indexes, a, b = get_point_gradient(uncertainty, current_pos, current_normal, gradients)
 

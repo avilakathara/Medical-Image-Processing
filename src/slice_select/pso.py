@@ -36,7 +36,6 @@ def particle_swarm_optimization(uncertainty, iterations, particles, omega, c1, c
     # for debugging
     best_solutions = []
     for i in range(iterations):
-        print("iteration {}".format(i))
         for p in range(particles):
             position = positions[p]
             # randomly generate r1 and r2
