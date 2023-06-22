@@ -264,126 +264,87 @@ def image_rotate_back(image, normal):
     #     rotated_image = rot(rotated_image, axis, angle)
 
     return rotated_image
-def prediction_weights(predictions,data, spacing, beta, eps, multichannel):
-    sum_preds = np.sum(predictions,axis=0)/len(predictions)
-    data = np.zeros(data.shape)
-    for i in range(len(sum_preds)):
-        for j in range(len(sum_preds[0])):
-            for k in range(len(sum_preds[0][0])):
-                data[i,j,k,0] = sum_preds[i,j,k]
-
-    # Weight calculation is main difference in multispectral version
-    # Original gradient**2 replaced with sum of gradients ** 2
+def prediction_weights(predictions, spacing, beta, eps, approach):
+    data = np.transpose(predictions,(1,2,3,0))
     gradients = np.concatenate(
-        [np.diff(data[..., 0], axis=ax).ravel() / spacing[ax]
-         for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
-
-    for channel in range(1, data.shape[-1]):
-        gradients += np.concatenate(
-            [np.diff(data[..., channel], axis=ax).ravel() / spacing[ax]
-             for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
-
-    # gradients = gradients ** 2
-    # All channels considered together in this standard deviation
-    scale_factor = -beta / (10 * data.std())
-    if multichannel:
-        # New final term in beta to give == results in trivial case where
-        # multiple identical spectra are passed.
-        scale_factor /= np.sqrt(data.shape[-1])
-    weights = np.exp(scale_factor * gradients)
-    weights += eps
-
-    weights = -weights
-    return weights
-def bram(arr,axis):
-    result = []
-    shape = (arr.shape[1],arr.shape[2])
-    if axis == 1:
-        shape = (arr.shape[0],arr.shape[2])
-    if axis == 2:
-        shape = (arr.shape[0],arr.shape[1])
-
-    for index in range(1,arr.shape[axis]):
-        array = np.zeros(shape)
-        for i in range(shape[0]):
-            for j in range(shape[1]):
-                if axis == 0:
-                    v1,v2 = arr[index,i,j],arr[index-1,i,j]
-                elif axis == 1:
-                    v1,v2 = arr[i,index,j],arr[i,index-1,j]
-                else:
-                    v1,v2 = arr[i,j,index],arr[i,j,index-1]
-
-                if (v1 == 0 or v1 == 1) and (v2 == 0 or v2 == 1):
-                    array[i,j] = (v1-v2)
-                else:
-                    array[i,j] = 0.5
-        result.append(array)
-    return np.array(result)
-def prediction_weights2(predictions,data, spacing, beta, eps, multichannel):
-    sum_preds = np.sum(predictions,axis=0)/len(predictions)
-    data = np.zeros(data.shape)
-    for i in range(len(sum_preds)):
-        for j in range(len(sum_preds[0])):
-            for k in range(len(sum_preds[0][0])):
-                data[i,j,k,0] = sum_preds[i,j,k]
-
-    # Weight calculation is main difference in multispectral version
-    # Original gradient**2 replaced with sum of gradients ** 2
-    gradients = np.concatenate(
-        [bram(data[..., 0], ax).ravel() / spacing[ax]
+        [difference_function(data,ax,approach).ravel() / spacing[ax]
          for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0)
-
-    for channel in range(1, data.shape[-1]):
-        gradients += np.concatenate(
-            [bram(data[..., channel], ax).ravel() / spacing[ax]
-             for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0)
-    gradients = gradients ** 2
     # All channels considered together in this standard deviation
     scale_factor = -beta / (10 * data.std())
-    # if multichannel:
-    #     # New final term in beta to give == results in trivial case where
-    #     # multiple identical spectra are passed.
-    #     scale_factor /= np.sqrt(data.shape[-1])
     weights = np.exp(scale_factor * gradients)
     weights += eps
+    return -weights
 
-    weights = -weights
-    return weights
+def adapt_on_certainty(predictions, spacing, beta, eps, approach):
+    data = np.transpose(predictions,(1,2,3,0))
+    difference = []
+    certainty = []
+    for ax in [2,1,0]:
+        if data.shape[ax] <= 1:
+            continue
+        diff, cer = difference_function(data,ax,approach)
+        difference.append(diff.ravel()/spacing[ax])
+        certainty.append(cer.ravel()/spacing[ax])
+
+    gradients = np.concatenate(difference, axis=0)
+    certainties = np.concatenate(certainty, axis=0)
+    # All channels considered together in this standard deviation
+    scale_factor = -beta / (10 * data.std())
+    weights = np.exp(scale_factor * gradients)
+    weights += eps
+    return -weights, certainties
+
+
+def difference_function(data,ax,approach):
+    data_i = np.take(data,np.arange(1,data.shape[ax]),axis=ax)
+    data_j = np.take(data,np.arange(0,data.shape[ax]-1),axis=ax)
+    if approach == 1:
+        diff = np.mean(data_i-data_j,axis=3)**2
+        return diff
+    if approach == 2:
+        data_i = np.mean(data_i,axis=3)
+        data_j = np.mean(data_j,axis=3)
+        diff = abs(data_i-data_j)
+        diff[((data_i != 0.0) & (data_i != 1.0)) | ((data_j != 0.0) & (data_j != 1.0))] = 0.5
+        return diff
+    if approach == 3:
+        diff = np.mean(data_i-data_j,axis=3)**2
+        data_i = np.mean(data_i,axis=3)
+        data_j = np.mean(data_j,axis=3)
+        # get lowest certainty based on how much the average varies
+        certainty_i = abs(0.5-data_i)
+        certainty_j = abs(0.5-data_j)
+
+        certainty_i[certainty_j < certainty_i] = certainty_j[certainty_j < certainty_i]
+        certainty = certainty_i * 2
+
+        return diff, certainty
 
 def modified_weights(data, spacing, beta, eps, multichannel):
     global predictions
     global weight
-    # if predictions is not None:
-    #     # use weight as new beta value
-    #     return prediction_weights2(predictions,data,spacing,weight,eps,multichannel)
+    # CHOOSE APPROACH
+    approach = 3
 
-    # Weight calculation is main difference in multispectral version
-    # Original gradient**2 replaced with sum of gradients ** 2
     gradients = np.concatenate(
         [np.diff(data[..., 0], axis=ax).ravel() / spacing[ax]
          for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
-
-    for channel in range(1, data.shape[-1]):
-        gradients += np.concatenate(
-            [np.diff(data[..., channel], axis=ax).ravel() / spacing[ax]
-             for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
-
-    # All channels considered together in this standard deviation
     scale_factor = -beta / (10 * data.std())
-    if multichannel:
-        # New final term in beta to give == results in trivial case where
-        # multiple identical spectra are passed.
-        scale_factor /= np.sqrt(data.shape[-1])
     weights = np.exp(scale_factor * gradients)
     weights += eps
-
     weights = -weights
     if predictions is None:
         return weights
-    pred_weights1 = prediction_weights(predictions,data, spacing, beta, eps, multichannel)
-    pred_weights2 = prediction_weights2(predictions,data, spacing, beta, eps, multichannel)
 
-    return weight[0]*weights + weight[1]*pred_weights1 + weight[2]*pred_weights2
+    if approach != 3:
+        pred_weights = prediction_weights(predictions, spacing, 100, eps, approach)
+        final_weights = weight*weights + (1.0-weight)*pred_weights
+        return final_weights
+    # adaptive weights
+    pred_weights, certainties = adapt_on_certainty(predictions, spacing, 100, eps, approach)
+    # print(np.mean(certainties))
+    return (1-certainties)*weights + certainties*pred_weights
+
+
 
 

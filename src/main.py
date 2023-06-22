@@ -212,7 +212,7 @@ def create_contours(viewer):
     else:
         contours = automatic_contours(ground_truth)
         # np.save("contours", contours)
-        # lw_layer = viewer.add_labels(contours, name='INPUT {}'.format(iterations), opacity=1.0)
+        lw_layer = viewer.add_labels(contours, name='INPUT {}'.format(iterations), opacity=1.0)
 
 
 def get_segmentation(viewer):
@@ -227,6 +227,7 @@ def get_segmentation(viewer):
 
     if seed_points is None:
         seed_points = convert_to_labels(contours)
+        viewer.add_labels(seed_points.astype(int),name='seed points')
         seed_points[seed_points == 2] = 4
     else:
         new_labeled_slice = convert_to_labels2d(contours, dil_size=3).astype(int)
@@ -328,7 +329,7 @@ def on_press_a(viewer):
         pass
     create_contours(viewer)
 
-    # viewer.add_labels(contours.astype(int), name='contours')
+    viewer.add_labels(contours.astype(int), name='contours')
     # contours = contours.astype(float)
     # normal = np.array([0.707, 0.707, 0])
     # contours, pad, shape = true_img_rot(contours,normal)
@@ -401,27 +402,28 @@ def on_press_s(viewer):
 
     iterations += 1
     get_segmentation(viewer)
+    viewer.add_labels(segmentation,name='segmentation')
     get_uncertainty_field(viewer)
     # print(evaluate_uncertainty(ground_truth, segmentation, uncertainty_field))
     user_check(viewer)
 
-threshold = 0.95
-dice = [0]
-prev_slices = []
-count = 0
-while(dice[-1] < threshold):
-    on_press_a(viewer)
-    on_press_s(viewer)
-    dice.append(dice_coefficient(segmentation,ground_truth))
-    slice_info = (normal[0]*point,normal[1]*point,normal[2]*point)
-    print("hoi ik ben bram: dice is"+str(dice[-1]))
-    if count ==3:
-        break
-    if slice_info in prev_slices:
-        break
-    prev_slices.append(slice_info)
-
-print(dice)
+# threshold = 0.95
+# dice = [0]
+# prev_slices = []
+# count = 0
+# while(dice[-1] < threshold):
+#     on_press_a(viewer)
+#     on_press_s(viewer)
+#     dice.append(dice_coefficient(segmentation,ground_truth))
+#     slice_info = (normal[0]*point,normal[1]*point,normal[2]*point)
+#     print("hoi ik ben bram: dice is"+str(dice[-1]))
+#     if count ==3:
+#         break
+#     if slice_info in prev_slices:
+#         break
+#     prev_slices.append(slice_info)
+#
+# print(dice)
 # viewer.add_labels(segmentation.astype(int),name='final segmentation')
 # viewer.add_labels(ground_truth.astype(int),name='ground truth')
 
@@ -449,7 +451,7 @@ print(dice)
 # print(user_interaction)
 
 # INITIATE
-# napari.run()
+napari.run()
 
 # while(sim > 0):
 #     try:
