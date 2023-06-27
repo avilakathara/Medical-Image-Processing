@@ -10,6 +10,8 @@ from skimage.segmentation import flood
 from skimage.morphology import binary_dilation
 from scipy.ndimage import affine_transform
 from datetime import datetime
+import matplotlib.pyplot as plt
+from scipy.ndimage import generic_filter
 
 now = datetime.now()
 
@@ -155,7 +157,7 @@ def segment(image, seed_points, pred = None, w = None):
         weight = None
         predictions = None
     seed_points = seed_points.astype(int)
-    prob = rw.random_walker(image, seed_points.astype(int), beta=20, mode='cg_j',tol=000.1, copy=False, return_full_prob=True)
+    prob = rw.random_walker(image, seed_points.astype(int), beta=20, mode='cg_j', copy=True, return_full_prob=True)
     labels = np.zeros(image.shape).astype(int)
     labels[prob[0]>=0.5] = 1
     return labels, prob
@@ -264,18 +266,46 @@ def image_rotate_back(image, normal):
     #     rotated_image = rot(rotated_image, axis, angle)
 
     return rotated_image
+def scale_with_winsorization(data1, data2, percentile):
+    # Identify outliers using the percentile range
+    min_val = np.percentile(data1 + data2, percentile)
+    max_val = np.percentile(data1 + data2, 100 - percentile)
+
+    # Replace outliers with values within the percentile range
+    data1 = np.clip(data1, min_val, max_val)
+    data2 = np.clip(data2, min_val, max_val)
+
+    # Scale both sets of numbers to the desired range
+    scaled_data1 = (data1 - min_val) / (max_val - min_val)
+    scaled_data2 = (data2 - min_val) / (max_val - min_val)
+
+    return scaled_data1, scaled_data2
+def debug_weights(weights):
+    #FOR DEBUGGING
+    w1 = weights[:9900]
+    w2 = weights[9900:]
+    w1 = np.reshape(w1,(100,99))
+    w2 = np.reshape(w2,(99,100))
+    # w1 = np.concatenate([w1,-1*np.ones((100,1))],axis=1)
+    # w2 = np.concatenate([w2,-1*np.ones((1,100))],axis=0)
+    # w1[w2>w1] = w2[w2>w1]
+    plt.imshow(w1)
+    plt.show()
+    plt.imshow(w2)
+    plt.show()
 def prediction_weights(predictions, spacing, beta, eps, approach):
+    std = np.mean(predictions,axis=0).std()
     data = np.transpose(predictions,(1,2,3,0))
-    gradients = np.concatenate(
+    g = np.concatenate(
         [difference_function(data,ax,approach).ravel() / spacing[ax]
          for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0)
-    # All channels considered together in this standard deviation
-    scale_factor = -beta / (10 * data.std())
-    weights = np.exp(scale_factor * gradients)
+    scale_factor = -beta / (10 * std)
+    weights = np.exp(scale_factor * g)
     weights += eps
     return -weights
 
 def adapt_on_certainty(predictions, spacing, beta, eps, approach):
+    std = np.mean(predictions,axis=0).std()
     data = np.transpose(predictions,(1,2,3,0))
     difference = []
     certainty = []
@@ -289,61 +319,106 @@ def adapt_on_certainty(predictions, spacing, beta, eps, approach):
     gradients = np.concatenate(difference, axis=0)
     certainties = np.concatenate(certainty, axis=0)
     # All channels considered together in this standard deviation
-    scale_factor = -beta / (10 * data.std())
+    scale_factor = -beta / (10 * std)
     weights = np.exp(scale_factor * gradients)
     weights += eps
-    return -weights, certainties
+    weights = -weights
+
+
+    certainties -= np.min(certainties)
+    certainties /= np.max(certainties)
+    return weights, 1-certainties
 
 
 def difference_function(data,ax,approach):
     data_i = np.take(data,np.arange(1,data.shape[ax]),axis=ax)
     data_j = np.take(data,np.arange(0,data.shape[ax]-1),axis=ax)
+    if approach == 0:
+        return abs(np.mean(data_i-data_j,axis=3))
     if approach == 1:
         diff = np.mean(data_i-data_j,axis=3)**2
         return diff
     if approach == 2:
+        # data_i = np.mean(data_i,axis=3)
+        # data_j = np.mean(data_j,axis=3)
+        # diff = abs(data_i-data_j)
+
+        diff = np.mean(abs(data_i-data_j),axis=3)
         data_i = np.mean(data_i,axis=3)
         data_j = np.mean(data_j,axis=3)
-        diff = abs(data_i-data_j)
+
         diff[((data_i != 0.0) & (data_i != 1.0)) | ((data_j != 0.0) & (data_j != 1.0))] = 0.5
         return diff
     if approach == 3:
-        diff = np.mean(data_i-data_j,axis=3)**2
+        # SPECIFY NEW APPROACH
+        diff = None
+        approach = 1 # DIT OOK VOOR 2 TESTENNNNNNNNNNNNNNNNNN
+        if approach == 1:
+            diff = np.mean(data_i-data_j,axis=3)**2
+
         data_i = np.mean(data_i,axis=3)
         data_j = np.mean(data_j,axis=3)
+        if approach == 2:
+            diff = abs(data_i-data_j)
+            diff[((data_i != 0.0) & (data_i != 1.0)) | ((data_j != 0.0) & (data_j != 1.0))] = 0.5
+
         # get lowest certainty based on how much the average varies
         certainty_i = abs(0.5-data_i)
         certainty_j = abs(0.5-data_j)
+
 
         certainty_i[certainty_j < certainty_i] = certainty_j[certainty_j < certainty_i]
         certainty = certainty_i * 2
 
         return diff, certainty
 
-def modified_weights(data, spacing, beta, eps, multichannel):
+def modified_weights(data_original, spacing, beta, eps, multichannel):
     global predictions
     global weight
     # CHOOSE APPROACH
-    approach = 3
+    approach = 1
+    if weight == -1:
+        approach = 3
+    if weight == -2:
+        predictions = None
+    data = np.zeros(data_original.shape)
+    data[:] = data_original[:]
+    if predictions is not None:
+        # rescale data for combining with prediction-based weights
+        data -= np.min(data)
+        if np.max(data)!=0:
+            data /= np.max(data)
+
+    if approach == 3:
+        mean = np.mean(predictions,axis=0)
+        mean /= mean.std()
+        data /= data.std()
+        data[:,:,:,0] += mean
 
     gradients = np.concatenate(
         [np.diff(data[..., 0], axis=ax).ravel() / spacing[ax]
-         for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0) ** 2
+         for ax in [2, 1, 0] if data.shape[ax] > 1], axis=0)
     scale_factor = -beta / (10 * data.std())
-    weights = np.exp(scale_factor * gradients)
+
+    weights = np.exp(scale_factor * gradients**2)
     weights += eps
     weights = -weights
     if predictions is None:
         return weights
-
     if approach != 3:
-        pred_weights = prediction_weights(predictions, spacing, 100, eps, approach)
+        pred_weights = prediction_weights(predictions, spacing, beta, eps, approach)
+        weights -= np.max(weights)
+        weights /= -np.min(weights)
+        pred_weights -= np.max(pred_weights)
+        pred_weights /= -np.min(pred_weights)
+        weights -= eps
+        pred_weights -= eps
         final_weights = weight*weights + (1.0-weight)*pred_weights
         return final_weights
-    # adaptive weights
-    pred_weights, certainties = adapt_on_certainty(predictions, spacing, 100, eps, approach)
-    # print(np.mean(certainties))
-    return (1-certainties)*weights + certainties*pred_weights
+
+    return weights
+
+
 
 
 
