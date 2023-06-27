@@ -28,8 +28,8 @@ def get_optimal_slice(uncertainty):
 
     highest_uncertainty = -1
     highest_point = [-10000, -10000, -10000]
-    point_step_size = 0.5
-    normal_step_size = 0.02
+    point_step_size = 0.05
+    normal_step_size = 1e-5
     chosen_normal = None
     normal = [1, 0, 0]
 

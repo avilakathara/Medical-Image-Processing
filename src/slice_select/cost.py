@@ -51,7 +51,6 @@ def get_coordinates_alt(size, p, normal):
 
     # create array containing its own 2d indices
     indices = np.arange(-largest_distance, largest_distance + 1)
-    print(indices)
 
     row_indices, col_indices = np.meshgrid(indices, indices, indexing='ij')
 
@@ -59,20 +58,12 @@ def get_coordinates_alt(size, p, normal):
 
     uv_indices = np.stack(np.meshgrid(indices, indices), axis=-1).reshape(-1, 2)
 
-
     coordinate_matrix = row_indices[:, :, np.newaxis] * a + col_indices[:, :, np.newaxis] * b
-    print(coordinate_matrix.shape)
     coordinates = np.reshape(coordinate_matrix, (-1, 3)) + p
     coordinates = coordinates.astype(np.int16)
     mask = np.all((coordinates >= np.array([0, 0, 0])) & (coordinates < size), axis=1)
     filtered_coordinates = coordinates[mask]
     filtered_indices = uv_indices[mask]
-
-    print(coordinates)
-    print(coordinates.shape)
-    print(mask)
-    print(uv_indices[mask])
-
 
     return filtered_coordinates, filtered_indices
 

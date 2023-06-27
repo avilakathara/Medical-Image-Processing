@@ -17,6 +17,7 @@ def lbfgs(uncertainty, iterations, maxls=30):
     def add_cost(x):
         costs.append(cost(uncertainty, x[0:3], x[3], x[4]))
 
+
     add_cost(initial_position)
 
     bounds = [(lower_bounds[0], upper_bounds[0]),
@@ -30,7 +31,7 @@ def lbfgs(uncertainty, iterations, maxls=30):
                                           iprint=-1, maxiter=iterations,maxls=maxls,factr=0,epsilon=1,
                                           callback=add_cost, pgtol=0)
 
-    return costs
+    return costs, x
 
 
 def calculate_cost(x, uncertainty):
@@ -42,7 +43,7 @@ def calculate_cost(x, uncertainty):
 if __name__ == "__main__":
     test_arr = np.load('uncertainty_fields/0522c0161_o3_i1.npy')
     print(test_arr.shape)
-    res = lbfgs(test_arr, 20)
+    res, x = lbfgs(test_arr, 20)
     print('----------------------------------')
     print(res)
 

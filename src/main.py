@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qtpy.QtWidgets import QMessageBox
 import cv2 as cv
+from pathlib import Path
+
 
 from segmentation.segmentation import *
 from slice_select.optimization import get_optimal_slice
@@ -260,9 +262,15 @@ def get_segmentation(viewer):
 def get_uncertainty_field(viewer, draw=False):
     global uncertainty_field
     uncertainty_field = calculate_uncertainty_fields(img, segmentation, probabilities)
-    # # uncomment this if you want to store uncertainty fields to a file
+    # uncomment this if you want to store uncertainty fields to a file
+
     # folder_name = folder_path.rsplit('/',1)[-1]
-    # np.save('C:/Users/jonas/Documents/git/Medical-Image-Processing/src/slice_select/uncertainty_fields/' + folder_name + '_o' + str(organ_choice) + '_i' + str(iterations), uncertainty_field)
+    # current_folder_name = base_path = Path(__file__).parent
+    #
+    # file_name = f"{current_folder_name}/slice_select/uncertainty_fields/{folder_name}_o{organ_choice}_i{iterations}"
+    # print(file_name)
+    #
+    # np.save(file_name, uncertainty_field)
     # print('uncertainty field saved')
     if draw:
         viewer.add_image(uncertainty_field, name="uncertainty_{}".format("u"), colormap="gray",
